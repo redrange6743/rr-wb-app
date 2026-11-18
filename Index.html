@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Weighbridge</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#781d1a">
+<style>
+  html, body { margin: 0; height: 100%; background: #fff; }
+  iframe { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+  #msg { font: 16px system-ui, sans-serif; padding: 24px; color: #333; }
+</style>
+</head>
+<body>
+<!-- The Weighbridge app's Google web address goes here (the Web app URL from Apps Script, ending in /exec). -->
+<script>const APP_URL = "https://script.google.com/macros/s/AKfycbysPyyIhb5_z2ZESa9WtZdh3Tk8QvURQxJyUtAHKJo2DDGtEdAkIC7cIHVKbEF2qe7B/exec";</script>
+<div id="msg" hidden></div>
+<script>
+  if (!/^https:\/\/script\.google\.com\/.+\/exec/.test(APP_URL)) {
+    const m = document.getElementById("msg"); m.hidden = false;
+    m.textContent = "The Weighbridge web address has not been set in this launcher yet.";
+  } else {
+    const f = document.createElement("iframe");
+    f.src = APP_URL;
+    f.title = "Weighbridge";
+    f.allow = "clipboard-write";
+    document.body.appendChild(f);
+  }
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>
