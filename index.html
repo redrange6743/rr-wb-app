@@ -119,6 +119,7 @@ button:disabled{opacity:.45;cursor:default}
 <div><label>Next ticket number</label><input id="h-next" type="number" min="1"></div>
 </div><h2 style="margin:16px 0 4px">Email dockets</h2><p class="mu" style="margin:0 0 8px">Every new ticket emails the office copy and weighbridge docket (PDF) plus the latest tickets list (CSV) to these addresses. Leave all blank to turn emailing off.</p>
 <div class="grid"><div><label>Email 1</label><input id="h-mail1" type="text" inputmode="email"></div><div><label>Email 2</label><input id="h-mail2" type="text" inputmode="email"></div><div><label>Email 3</label><input id="h-mail3" type="text" inputmode="email"></div></div>
+<p class="bad" id="mailerr" hidden style="font-size:13px"></p>
 <p><button class="pri" id="savehdr">Save business info</button></p></div>
 </section>
 
@@ -152,11 +153,11 @@ const normDir=o=>{const d={};["carriers","senders","receivers","products"].forEa
 const API="https://script.google.com/macros/s/AKfycbysPyyIhb5_z2ZESa9WtZdh3Tk8QvURQxJyUtAHKJo2DDGtEdAkIC7cIHVKbEF2qe7B/exec";
 const HAS_G=!!(window.google&&google.script&&google.script.run);
 function call(fn,...args){
- if(HAS_G)return new Promise((res,rej)=>{google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](...args)});
+ if(HAS_G)return new Promise((res,rej)=>{google.script.run.withSuccessHandler(res).withFailureHandler(e=>{const x=new Error(e&&e.message||String(e));x.server=true;rej(x)})[fn](...args)});
  const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),25000);
  return fetch(API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({fn,args}),redirect:"follow",signal:ctl.signal})
   .then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json()})
-  .then(j=>{if(j.error)throw new Error(j.error);return j.result}).finally(()=>clearTimeout(tm))}
+  .then(j=>{if(j.error){const e=new Error(j.error);e.server=true;throw e}return j.result}).finally(()=>clearTimeout(tm))}
 // recent signatures are kept on this device so dockets print with signatures even offline
 const SK2=KEY+"-sigs";
 try{Object.assign(SIGS,JSON.parse(localStorage.getItem(SK2)||"{}"))}catch(e){}
@@ -174,7 +175,9 @@ async function flush(){if(flushing||!PQ.length)return;flushing=true;status("Savi
    else if(o.op==="del")r=await call("deleteTicket",o.no);
    else if(o.op==="dir")r=await call("saveDir",JSON.stringify(o.dir));
    else if(o.op==="hdr")r=await call("saveHdr",JSON.stringify(o.hdr));
-   else if(o.op==="mail")r=await sendDocketEmail(o.no);
+   else if(o.op==="mail"){try{r=await sendDocketEmail(o.no)}catch(e){if(!e.server)throw e;
+     // Google refused the email (e.g. permission not given yet): report it and carry on, so tickets keep syncing
+     r=null;mailErr("Email for ticket "+o.no+" was not sent: "+e.message)}}
    PQ.shift();saveQ();
    if(r&&r.error)toast(r.error);
    if(r&&r.renamed){PQ.forEach(x=>{if(x.op==="mail"&&x.no===o.t.no)x.no=r.renamed});saveQ();const t=S.tickets.find(x=>x.no===o.t.no);if(t)t.no=r.renamed;SIGS[r.renamed]=SIGS[o.t.no];toast("Ticket number "+o.t.no+" was already used on the other device, so this ticket was saved as "+r.renamed+".")}
@@ -310,17 +313,18 @@ function sortKey(t){const d=String(t.dt||"").trim();let m=d.match(/^(\d{1,2})\/(
 function fmtDt(d){const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]+" "+m[4]+":"+m[5]:String(d||"")}
 function render(){const q=$("q").value.toLowerCase();
  const list=[...S.tickets].sort((a,b)=>sortKey(b).localeCompare(sortKey(a))||(parseInt(b.no,10)||0)-(parseInt(a.no,10)||0)).filter(t=>!q||JSON.stringify({...t,sigO:0,sigD:0,sigR:0}).toLowerCase().includes(q));
- $("rows").innerHTML=list.map(t=>{const T=tot(t.w),n=esc(t.no);return`<tr><td>${n}</td><td>${esc(fmtDt(t.dt))}</td><td>${esc(t.rego)}</td><td>${esc(t.carrier)}</td><td>${esc(t.receiver)}</td><td>${esc(t.product)}</td><td class="n">${fmt(T.t)}</td><td class="n">${fmt(T.g)}</td><td class="n">${fmt(T.n)}</td><td><button class="sm" data-a="p" data-n="${n}">Print</button> <button class="sm" data-a="x" data-n="${n}">Download</button> <button class="sm" data-a="e" data-n="${n}">Edit</button> <button class="sm dg" data-a="d" data-n="${n}">Delete</button></td></tr>`}).join("");
+ $("rows").innerHTML=list.map(t=>{const T=tot(t.w),n=esc(t.no);return`<tr><td>${n}</td><td>${esc(fmtDt(t.dt))}</td><td>${esc(t.rego)}</td><td>${esc(t.carrier)}</td><td>${esc(t.receiver)}</td><td>${esc(t.product)}</td><td class="n">${fmt(T.t)}</td><td class="n">${fmt(T.g)}</td><td class="n">${fmt(T.n)}</td><td><button class="sm" data-a="p" data-n="${n}">Print</button> <button class="sm" data-a="m" data-n="${n}">Email</button> <button class="sm" data-a="e" data-n="${n}">Edit</button> <button class="sm dg" data-a="d" data-n="${n}">Delete</button></td></tr>`}).join("");
  $("empty").hidden=list.length>0;const tn=list.reduce((a,t)=>a+tot(t.w).n,0);$("tot").textContent=list.length+" tickets, "+fmt(tn)+" kg net";
  }
 function renderDirs(){["carriers","senders","receivers","products"].forEach(k=>{if(!$("dl-"+k).contains(document.activeElement))renderDir(k)})}
-function fillHdr(){if($("v-hdr").contains(document.activeElement))return;$("h-name").value=S.hdr.name||"";$("h-abn").value=S.hdr.abn||"";$("h-addr").value=S.hdr.addr||"";["contact","phone","email","web","mail1","mail2","mail3"].forEach(k=>$("h-"+k).value=S.hdr[k]||"");$("h-next").value=S.hdr.next||1}
+function fillHdr(){try{const m=localStorage.getItem(KEY+"-mailerr");if(m){$("mailerr").textContent="Last email problem: "+m;$("mailerr").hidden=false}}catch(e){}if($("v-hdr").contains(document.activeElement))return;$("h-name").value=S.hdr.name||"";$("h-abn").value=S.hdr.abn||"";$("h-addr").value=S.hdr.addr||"";["contact","phone","email","web","mail1","mail2","mail3"].forEach(k=>$("h-"+k).value=S.hdr[k]||"");$("h-next").value=S.hdr.next||1}
 $("q").oninput=render;
 $("rows").onclick=async e=>{const b=e.target.closest("button");if(!b)return;const t=S.tickets.find(x=>x.no===b.dataset.n);if(!t)return;const a=b.dataset.a;
  if("vpxe".includes(a)){if(a==="x"&&!anySel())return;await withSigs(t)}
  
  if(a==="p")preview(t);
- if(a==="x"&&anySel())download(t);
+ if(a==="m"){if(![S.hdr.mail1,S.hdr.mail2,S.hdr.mail3].some(x=>x&&x.includes("@"))){toast("Add an email address in Business info first.");return}
+  if(await ask("Email ticket "+t.no+" to the office again?","Send","Cancel")){toast("Sending ticket "+t.no+"…");enqueue({op:"mail",no:t.no})}}
  if(a==="d"&&await ask("Delete ticket "+t.no+"? This cannot be undone.","Delete","Cancel")){S.tickets=S.tickets.filter(x=>x!==t);delTicket(t.no);render()}
  if(a==="e"){FIELDS.forEach(f=>$(f).value=t[f]||"");t.w.forEach((x,i)=>{$("t"+(i+1)).value=x.t;$("g"+(i+1)).value=x.g});SIG={o:t.sigO||"",d:t.sigD||"",r:t.sigR||"",pickup:!!t.pickup};renderSigs();editing=t.no;calc();show("new")}};
 
@@ -394,10 +398,11 @@ $("pprint").onclick=()=>doPrint(cur);
 $("pdown").onclick=()=>{if(anySel())download(cur)};
 function doPrint(t){if(!t||!anySel())return;$("print").innerHTML=build(t);window.print()}
 // ---- emailing the office copy ----
+function mailErr(m){toast(m);try{localStorage.setItem(KEY+"-mailerr",m+" ("+new Date().toLocaleString("en-AU")+")")}catch(e){}const el=$("mailerr");if(el){el.textContent="Last email problem: "+m;el.hidden=false}}
 function docketName(t){const d=fmtDt(t.dt).slice(0,10).replace(/\//g,"-");return("Ticket "+t.no+(t.receiver?" - "+t.receiver:"")+(d?" - "+d:"")).replace(/[\\/:*?"<>|]+/g," ").replace(/\s+/g," ").trim()}
 async function sendDocketEmail(no){const t=S.tickets.find(x=>x.no===no);if(!t)return{ok:true};await withSigs(t);
  let b64="";try{const blob=await docketPdf(`<div class="sheet">${weighbridge(t)}${delivery(t,"Office copy")}</div>`);b64=await new Promise(r=>{const f=new FileReader();f.onload=()=>r(String(f.result).split(",")[1]);f.readAsDataURL(blob)})}catch(e){toast("Could not make the PDF for ticket "+no+"; the email was sent with the CSV only.")}
- const name=docketName(t);const r=await call("emailDocket",no,b64,name+".pdf",name);if(r&&r.sent)toast("Ticket "+no+" emailed to the office.");return r}
+ const name=docketName(t);const r=await call("emailDocket",no,b64,name+".pdf",name);if(r&&r.sent){toast("Ticket "+no+" emailed to the office.");try{localStorage.removeItem(KEY+"-mailerr")}catch(e){}const el=$("mailerr");if(el)el.hidden=true}else if(r&&r.skipped)mailErr(r.skipped);return r}
 // render each docket page to an image and wrap the pages in a PDF (A4)
 function pageImage(html){return new Promise((res,rej)=>{const W=794,H=1123,sc=1.6;
  const div=document.createElement("div");div.innerHTML=html;const xhtml=new XMLSerializer().serializeToString(div);
