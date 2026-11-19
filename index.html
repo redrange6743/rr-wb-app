@@ -117,7 +117,9 @@ button:disabled{opacity:.45;cursor:default}
 <div><label>Email</label><input id="h-email" type="text" inputmode="email"></div>
 <div><label>Website</label><input id="h-web" type="text" inputmode="url"></div>
 <div><label>Next ticket number</label><input id="h-next" type="number" min="1"></div>
-</div><p><button class="pri" id="savehdr">Save docket header</button></p></div>
+</div><h2 style="margin:16px 0 4px">Email dockets</h2><p class="mu" style="margin:0 0 8px">Every new ticket emails the office copy and weighbridge docket (PDF) plus the latest tickets list (CSV) to these addresses. Leave all blank to turn emailing off.</p>
+<div class="grid"><div><label>Email 1</label><input id="h-mail1" type="text" inputmode="email"></div><div><label>Email 2</label><input id="h-mail2" type="text" inputmode="email"></div><div><label>Email 3</label><input id="h-mail3" type="text" inputmode="email"></div></div>
+<p><button class="pri" id="savehdr">Save business info</button></p></div>
 </section>
 
 <p class="mu">Tickets, signatures, directories and the docket header are saved in your Google Sheet, so the tablet and desktop always match. If the internet drops, tickets are kept on this device and sent when it is back.</p>
@@ -172,13 +174,15 @@ async function flush(){if(flushing||!PQ.length)return;flushing=true;status("Savi
    else if(o.op==="del")r=await call("deleteTicket",o.no);
    else if(o.op==="dir")r=await call("saveDir",JSON.stringify(o.dir));
    else if(o.op==="hdr")r=await call("saveHdr",JSON.stringify(o.hdr));
+   else if(o.op==="mail")r=await sendDocketEmail(o.no);
    PQ.shift();saveQ();
    if(r&&r.error)toast(r.error);
-   if(r&&r.renamed){const t=S.tickets.find(x=>x.no===o.t.no);if(t)t.no=r.renamed;SIGS[r.renamed]=SIGS[o.t.no];toast("Ticket number "+o.t.no+" was already used on the other device, so this ticket was saved as "+r.renamed+".")}
+   if(r&&r.renamed){PQ.forEach(x=>{if(x.op==="mail"&&x.no===o.t.no)x.no=r.renamed});saveQ();const t=S.tickets.find(x=>x.no===o.t.no);if(t)t.no=r.renamed;SIGS[r.renamed]=SIGS[o.t.no];toast("Ticket number "+o.t.no+" was already used on the other device, so this ticket was saved as "+r.renamed+".")}
   }
   online=true;status(okMsg());pull(true)}
  catch(e){online=false;status(offMsg(),true)}finally{flushing=false}}
-const putTicket=(t,old)=>{SIGS[t.no]={sigO:t.sigO||"",sigD:t.sigD||"",sigR:t.sigR||""};saveSigs();t._full=1;persist();enqueue({op:"save",t:JSON.parse(JSON.stringify(t)),old:old||""})};
+const putTicket=(t,old)=>{SIGS[t.no]={sigO:t.sigO||"",sigD:t.sigD||"",sigR:t.sigR||""};saveSigs();t._full=1;persist();enqueue({op:"save",t:JSON.parse(JSON.stringify(t)),old:old||""});
+ if(!old&&[S.hdr.mail1,S.hdr.mail2,S.hdr.mail3].some(x=>x&&x.includes("@")))enqueue({op:"mail",no:t.no})};
 const delTicket=no=>{persist();enqueue({op:"del",no})};
 const putDir=()=>{persist();enqueue({op:"dir",dir:JSON.parse(JSON.stringify(S.dir))})};
 const putHdr=()=>{persist();enqueue({op:"hdr",hdr:{...S.hdr}})};
@@ -215,7 +219,7 @@ function tot(w){let t=0,g=0;w.forEach(x=>{if(has(x.t)&&has(x.g)&&num(x.g)>=num(x
 function dl(name,text,type){try{const u=URL.createObjectURL(text instanceof Blob?text:new Blob([text],{type:type||"text/plain"}));const l=document.createElement("a");l.href=u;l.download=name;document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),5000)}catch(e){toast("Could not save the file.")}}
 
 // tabs
-const TABS=[["tickets","Tickets"],["new","New ticket"],["carriers","Freight providers"],["senders","Senders"],["receivers","Receivers"],["products","Products"],["hdr","Docket header"]];
+const TABS=[["tickets","Tickets"],["new","New ticket"],["carriers","Freight providers"],["senders","Senders"],["receivers","Receivers"],["products","Products"],["hdr","Business info"]];
 function show(t){TABS.forEach(([k])=>{$("v-"+k).hidden=k!==t});[...$("nav").children].forEach((b,i)=>b.classList.toggle("on",TABS[i][0]===t));if(t==="new"&&!editing&&!$("no").value)resetForm()}
 TABS.forEach(([k,l])=>{const b=document.createElement("button");b.className="tab";b.textContent=l;b.onclick=()=>show(k);$("nav").appendChild(b)});
 
@@ -310,7 +314,7 @@ function render(){const q=$("q").value.toLowerCase();
  $("empty").hidden=list.length>0;const tn=list.reduce((a,t)=>a+tot(t.w).n,0);$("tot").textContent=list.length+" tickets, "+fmt(tn)+" kg net";
  }
 function renderDirs(){["carriers","senders","receivers","products"].forEach(k=>{if(!$("dl-"+k).contains(document.activeElement))renderDir(k)})}
-function fillHdr(){if($("v-hdr").contains(document.activeElement))return;$("h-name").value=S.hdr.name||"";$("h-abn").value=S.hdr.abn||"";$("h-addr").value=S.hdr.addr||"";["contact","phone","email","web"].forEach(k=>$("h-"+k).value=S.hdr[k]||"");$("h-next").value=S.hdr.next||1}
+function fillHdr(){if($("v-hdr").contains(document.activeElement))return;$("h-name").value=S.hdr.name||"";$("h-abn").value=S.hdr.abn||"";$("h-addr").value=S.hdr.addr||"";["contact","phone","email","web","mail1","mail2","mail3"].forEach(k=>$("h-"+k).value=S.hdr[k]||"");$("h-next").value=S.hdr.next||1}
 $("q").oninput=render;
 $("rows").onclick=async e=>{const b=e.target.closest("button");if(!b)return;const t=S.tickets.find(x=>x.no===b.dataset.n);if(!t)return;const a=b.dataset.a;
  if("vpxe".includes(a)){if(a==="x"&&!anySel())return;await withSigs(t)}
@@ -340,7 +344,7 @@ document.addEventListener("input",e=>{const d=e.target.dataset;if(d&&d.k){S.dir[
 document.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b)return;
  if(b.dataset.add){S.dir[b.dataset.add].push({name:""});putDir();renderDir(b.dataset.add)}
  if(b.dataset.del){const k=b.dataset.del,i=+b.dataset.i;if(await ask("Delete "+(S.dir[k][i].name||"this entry")+" from the directory? Old tickets are not changed.","Delete","Cancel")){S.dir[k].splice(i,1);putDir();renderDir(k)}}});
-$("savehdr").onclick=()=>{S.hdr={name:$("h-name").value,abn:$("h-abn").value,addr:$("h-addr").value,contact:$("h-contact").value.trim(),phone:$("h-phone").value.trim(),email:$("h-email").value.trim(),web:$("h-web").value.trim(),next:parseInt($("h-next").value,10)||1};putHdr();toast("Docket header saved.")};
+$("savehdr").onclick=()=>{S.hdr={name:$("h-name").value,abn:$("h-abn").value,addr:$("h-addr").value,contact:$("h-contact").value.trim(),phone:$("h-phone").value.trim(),email:$("h-email").value.trim(),web:$("h-web").value.trim(),mail1:$("h-mail1").value.trim(),mail2:$("h-mail2").value.trim(),mail3:$("h-mail3").value.trim(),next:parseInt($("h-next").value,10)||1};putHdr();toast("Business info saved.")};
 
 // dockets
 const DCSS=`.sheet{width:190mm;margin:0 auto;font:12px/1.35 Arial,sans-serif;color:#000;}.sheet+.sheet{page-break-before:always}*{box-sizing:border-box}
@@ -389,6 +393,30 @@ $("pclose").onclick=()=>{$("prev").style.display="none"};
 $("pprint").onclick=()=>doPrint(cur);
 $("pdown").onclick=()=>{if(anySel())download(cur)};
 function doPrint(t){if(!t||!anySel())return;$("print").innerHTML=build(t);window.print()}
+// ---- emailing the office copy ----
+function docketName(t){const d=fmtDt(t.dt).slice(0,10).replace(/\//g,"-");return("Ticket "+t.no+(t.receiver?" - "+t.receiver:"")+(d?" - "+d:"")).replace(/[\\/:*?"<>|]+/g," ").replace(/\s+/g," ").trim()}
+async function sendDocketEmail(no){const t=S.tickets.find(x=>x.no===no);if(!t)return{ok:true};await withSigs(t);
+ let b64="";try{const blob=await docketPdf(`<div class="sheet">${weighbridge(t)}${delivery(t,"Office copy")}</div>`);b64=await new Promise(r=>{const f=new FileReader();f.onload=()=>r(String(f.result).split(",")[1]);f.readAsDataURL(blob)})}catch(e){toast("Could not make the PDF for ticket "+no+"; the email was sent with the CSV only.")}
+ const name=docketName(t);const r=await call("emailDocket",no,b64,name+".pdf",name);if(r&&r.sent)toast("Ticket "+no+" emailed to the office.");return r}
+// render each docket page to an image and wrap the pages in a PDF (A4)
+function pageImage(html){return new Promise((res,rej)=>{const W=794,H=1123,sc=1.6;
+ const div=document.createElement("div");div.innerHTML=html;const xhtml=new XMLSerializer().serializeToString(div);
+ const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W*sc}" height="${H*sc}" viewBox="0 0 ${W} ${H}"><foreignObject width="${W}" height="${H}"><div xmlns="http://www.w3.org/1999/xhtml" style="width:${W}px;height:${H}px;background:#fff;padding:10mm;box-sizing:border-box"><style>${DCSS.replace(/&/g,"&amp;").replace(/</g,"&lt;")}</style>${xhtml}</div></foreignObject></svg>`;
+ const img=new Image();img.onload=()=>{try{const c=document.createElement("canvas");c.width=W*sc;c.height=H*sc;const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(img,0,0,c.width,c.height);const u=c.toDataURL("image/jpeg",.85);const b=atob(u.split(",")[1]),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);res({jpg:a,w:c.width,h:c.height})}catch(e){rej(e)}};img.onerror=()=>rej(new Error("render failed"));
+ img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg)})}
+async function docketPdf(html){const tmp=document.createElement("div");tmp.innerHTML=html;const pages=[];for(const sh of tmp.querySelectorAll(".sheet"))pages.push(await pageImage(sh.outerHTML));
+ const enc=new TextEncoder(),parts=[],offs=[];let len=0;const push=x=>{const u=typeof x==="string"?enc.encode(x):x;parts.push(u);len+=u.length};
+ const n=pages.length,obj=(id,body)=>{offs[id]=len;push(id+" 0 obj\n");body();push("\nendobj\n")};
+ push("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n");
+ obj(1,()=>push("<< /Type /Catalog /Pages 2 0 R >>"));
+ obj(2,()=>push("<< /Type /Pages /Count "+n+" /Kids ["+pages.map((_,i)=>(3+i*3)+" 0 R").join(" ")+"] >>"));
+ pages.forEach((pg,i)=>{const P=3+i*3,Cn=P+1,Im=P+2,cs="q 595.28 0 0 841.89 0 0 cm /Im0 Do Q";
+  obj(P,()=>push("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /XObject << /Im0 "+Im+" 0 R >> >> /Contents "+Cn+" 0 R >>"));
+  obj(Cn,()=>push("<< /Length "+cs.length+" >>\nstream\n"+cs+"\nendstream"));
+  obj(Im,()=>{push("<< /Type /XObject /Subtype /Image /Width "+pg.w+" /Height "+pg.h+" /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length "+pg.jpg.length+" >>\nstream\n");push(pg.jpg);push("\nendstream")})});
+ const total=3+n*3,xref=len;let x="xref\n0 "+total+"\n0000000000 65535 f \n";for(let i=1;i<total;i++)x+=String(offs[i]).padStart(10,"0")+" 00000 n \n";
+ push(x+"trailer\n<< /Size "+total+" /Root 1 0 R >>\nstartxref\n"+xref+"\n%%EOF");
+ return new Blob(parts,{type:"application/pdf"})}
 function download(t){if(!anySel())return;dl("docket-"+t.no+".html",`<!doctype html><html><head><meta charset="utf-8"><title>Docket ${esc(t.no)}</title><style>@page{size:A4;margin:10mm}body{margin:0}${DCSS}</style></head><body>${build(t)}<scr`+`ipt>addEventListener("load",function(){setTimeout(function(){print()},400)})<\/scr`+`ipt></body></html>`,"text/html")}
 
 render();renderDirs();fillHdr();show("tickets");
