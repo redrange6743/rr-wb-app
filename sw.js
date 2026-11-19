@@ -1,4 +1,20 @@
-// Minimal service worker so the launcher can be installed as an app. It does not cache anything.
-self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", e => e.waitUntil(self.clients.claim()));
-self.addEventListener("fetch", () => {});
+// Keeps the Weighbridge app on this device so it opens with or without internet.
+// Tries the internet first (so updates arrive), and uses the saved copy when offline.
+const CACHE = "weighbridge-202611191057";
+const FILES = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"];
+self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => Promise.all(FILES.map(f => c.add(f).catch(() => {})))).then(() => self.skipWaiting())); });
+self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
+self.addEventListener("fetch", e => {
+  const u = new URL(e.request.url);
+  if (e.request.method !== "GET" || u.origin !== self.location.origin) return; // Google Sheet requests go straight to the internet
+  e.respondWith((async () => {
+    const cache = await caches.open(CACHE);
+    try {
+      const net = await Promise.race([fetch(e.request), new Promise((_, rej) => setTimeout(() => rej(new Error("slow")), 4000))]);
+      if (net && net.ok) cache.put(e.request, net.clone());
+      return net;
+    } catch (err) {
+      return (await cache.match(e.request, { ignoreSearch: true })) || (await cache.match("index.html")) || Response.error();
+    }
+  })());
+});
