@@ -77,12 +77,13 @@ button:disabled{opacity:.45;cursor:default}
 <div class="card"><div class="row"><input id="q" placeholder="Search tickets" style="max-width:260px"><span id="tot" hidden></span>
 <span style="flex:1"></span>
 <button class="sm" id="fromtk">Add names from tickets to directory</button><button class="sm" id="expcsv">Download CSV</button><button class="sm" id="expjson">Backup</button><button class="sm" id="impjson">Restore</button><input type="file" id="impfile" accept=".json" hidden></div></div>
-<div class="card scroll"><table><thead><tr><th>No.</th><th>Date</th><th>Rego</th><th>Carrier</th><th>Receiver</th><th>Product</th><th class="n">Tare (kg)</th><th class="n">Gross (kg)</th><th class="n">Net (kg)</th><th></th></tr></thead><tbody id="rows"></tbody></table><p class="mu" id="empty">No tickets yet. Use New ticket to add one.</p></div>
+<div class="card scroll"><table><thead><tr><th>WB no.</th><th>Docket</th><th>Date</th><th>Rego</th><th>Carrier</th><th>Receiver</th><th>Product</th><th class="n">Tare (kg)</th><th class="n">Gross (kg)</th><th class="n">Net (kg)</th><th></th></tr></thead><tbody id="rows"></tbody></table><p class="mu" id="empty">No tickets yet. Use New ticket to add one.</p></div>
 </section>
 
 <section id="v-new" hidden>
 <div class="card"><div class="grid">
-<div><label>Ticket no.</label><input id="no"></div>
+<div><label>Weighbridge no.</label><input id="no"></div>
+<div><label>Docket no. <span class="mu">(sales only)</span></label><input id="dno"></div>
 <div><label>Date and time</label><input id="dt" type="datetime-local"></div>
 <div><label>Vehicle rego</label><input id="rego"></div>
 <div><label>Driver</label><input id="driver"></div>
@@ -116,7 +117,8 @@ button:disabled{opacity:.45;cursor:default}
 <div><label>Phone</label><input id="h-phone" type="tel"></div>
 <div><label>Email</label><input id="h-email" type="text" inputmode="email"></div>
 <div><label>Website</label><input id="h-web" type="text" inputmode="url"></div>
-<div><label>Next ticket number</label><input id="h-next" type="number" min="1"></div>
+<div><label>Next weighbridge number</label><input id="h-next" type="number" min="1"></div>
+<div><label>Next docket number</label><input id="h-dnext" type="number" min="1"></div>
 </div><h2 style="margin:16px 0 4px">Email dockets</h2><p class="mu" style="margin:0 0 8px">Every new ticket emails the office copy and weighbridge docket (PDF) plus the latest tickets list (CSV) to these addresses. Leave all blank to turn emailing off.</p>
 <div class="grid"><div><label>Email 1</label><input id="h-mail1" type="text" inputmode="email"></div><div><label>Email 2</label><input id="h-mail2" type="text" inputmode="email"></div><div><label>Email 3</label><input id="h-mail3" type="text" inputmode="email"></div></div>
 <p class="bad" id="mailerr" hidden style="font-size:13px"></p>
@@ -180,6 +182,7 @@ async function flush(){if(flushing||!PQ.length)return;flushing=true;status("Savi
      r=null;mailErr("Email for ticket "+o.no+" was not sent: "+e.message)}}
    PQ.shift();saveQ();
    if(r&&r.error)toast(r.error);
+   if(r&&r.dno){const t=S.tickets.find(x=>x.no===(r.renamed||o.t.no)||x.no===o.t.no);if(t)t.dno=r.dno;toast("Docket number "+o.t.dno+" was already used on the other device, so this ticket got docket "+r.dno+".")}
    if(r&&r.renamed){PQ.forEach(x=>{if(x.op==="mail"&&x.no===o.t.no)x.no=r.renamed});saveQ();const t=S.tickets.find(x=>x.no===o.t.no);if(t)t.no=r.renamed;SIGS[r.renamed]=SIGS[o.t.no];toast("Ticket number "+o.t.no+" was already used on the other device, so this ticket was saved as "+r.renamed+".")}
   }
   online=true;status(okMsg());pull(true)}
@@ -271,7 +274,7 @@ addEventListener("resize",()=>{if($("sigx").hidden)return;const u=exportSig();si
 function combo(id,kind){const inp=$(id),box=document.createElement("div");box.className="sug";box.hidden=true;inp.parentNode.appendChild(box);let items=[],idx=0;
  const draw=()=>{box.innerHTML=items.map((n,i)=>`<div class="${i===idx?"on":""}" data-i="${i}">${esc(n)}</div>`).join("");box.hidden=!items.length};
  const refresh=()=>{const v=inp.value.trim().toLowerCase();items=S.dir[kind].map(e=>e.name).filter(n=>n&&n.toLowerCase()!==v&&(!v||n.toLowerCase().includes(v))).sort((a,b)=>(b.toLowerCase().startsWith(v)-a.toLowerCase().startsWith(v))||a.localeCompare(b)).slice(0,8);idx=0;draw()};
- const pick=n=>{inp.value=n;box.hidden=true};
+ const pick=n=>{inp.value=n;box.hidden=true;inp.dispatchEvent(new Event("change"))};
  inp.oninput=refresh;inp.onfocus=refresh;inp.onblur=()=>setTimeout(()=>box.hidden=true,150);
  box.onpointerdown=e=>{const d=e.target.closest("[data-i]");if(d){e.preventDefault();pick(items[d.dataset.i])}};
  inp.onkeydown=e=>{if(box.hidden)return;
@@ -283,19 +286,26 @@ function combo(id,kind){const inp=$(id),box=document.createElement("div");box.cl
 [["carrier","carriers"],["sender","senders"],["receiver","receivers"],["product","products"]].forEach(a=>combo(a[0],a[1]));
 
 // form
-const FIELDS=["no","dt","rego","driver","carrier","sender","receiver","product","ref","bales","notes"];
+const FIELDS=["no","dno","dt","rego","driver","carrier","sender","receiver","product","ref","bales","notes"];
 let editing=null;
 function nowLocal(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)}
-function resetForm(){editing=null;FIELDS.forEach(f=>$(f).value="");for(let i=1;i<=4;i++){$("t"+i).value="";$("g"+i).value=""}SIG={o:"",d:"",r:"",pickup:false};renderSigs();$("no").value=S.hdr.next||1;$("dt").value=nowLocal();calc()}
+function resetForm(){editing=null;FIELDS.forEach(f=>$(f).value="");for(let i=1;i<=4;i++){$("t"+i).value="";$("g"+i).value=""}SIG={o:"",d:"",r:"",pickup:false};renderSigs();$("no").value=S.hdr.next||1;$("dt").value=nowLocal();calc();syncDno()}
+// docket numbers: only for sales (Bales-Cotton Seed or Bulk-Cotton Seed), with their own counter
+const saleType=p=>{const k=String(p||"").toLowerCase().replace(/[^a-z]/g,"");return k==="balescottonseed"?"Bale Sales":k==="bulkcottonseed"?"Bulk Sales":""};
+function docketNext(){return Math.max(num(S.hdr.dnext)||num(S.hdr.next)||1,...S.tickets.filter(t=>t.no!==editing).map(t=>(parseInt(t.dno,10)||0)+1))}
+function syncDno(){const sale=saleType($("product").value);if(sale&&!$("dno").value)$("dno").value=docketNext();if(!sale)$("dno").value=""}
+$("product").addEventListener("input",syncDno);$("product").addEventListener("change",syncDno);
 function readForm(){const o={};FIELDS.forEach(f=>o[f]=$(f).value);o.w=formW();o.sigO=SIG.o;o.sigD=SIG.d;o.sigR=SIG.r;o.pickup=SIG.pickup;return o}
 async function offerNew(o){const miss=[];[["carrier","carriers","freight provider"],["sender","senders","sender"],["receiver","receivers","receiver"],["product","products","product"]].forEach(([f,k,l])=>{const v=(o[f]||"").trim();if(v&&!S.dir[k].some(e=>e.name.toLowerCase()===v.toLowerCase()))miss.push([k,l,v])});for(const [k,l,v] of miss){if(await ask('"'+v+'" is not in the '+l+' directory. Save it? You can add details later.',"Save to directory","Not now")){S.dir[k].push({name:v});putDir();renderDir(k)}}}
 async function saveTicket(){const o=readForm();if(!o.no){toast("Enter a ticket number.");return null}
+ if(saleType(o.product)){if(!o.dno)o.dno=String(docketNext())}else o.dno="";
+ if(o.dno&&S.tickets.some(t=>t.dno===o.dno&&t.no!==editing)){toast("Docket number "+o.dno+" is already used.");return null}
  if(!sigOk(o)){toast(o.sigO?"The driver or the receiver needs to sign.":"The sender needs to sign.");openSig(o.sigO?1:0);return null}
  if(S.tickets.some(t=>t.no===o.no&&t.no!==editing)){toast("Ticket number "+o.no+" already exists.");return null}
  await offerNew(o);
  const old=editing;if(editing!==null){const i=S.tickets.findIndex(t=>t.no===editing);if(i>-1)S.tickets[i]=o;else S.tickets.push(o)}
  else S.tickets.push(o);
- const n=parseInt(o.no,10);if(!isNaN(n)&&n>=num(S.hdr.next)){S.hdr.next=n+1;putHdr();fillHdr()}
+ const n=parseInt(o.no,10),dn=parseInt(o.dno,10);let hc=false;if(!isNaN(n)&&n>=num(S.hdr.next)){S.hdr.next=n+1;hc=true}if(!isNaN(dn)&&dn>=num(S.hdr.dnext||S.hdr.next)){S.hdr.dnext=dn+1;hc=true}if(hc){putHdr();fillHdr()}
  putTicket(o,old);render();return o}
 const done=()=>{resetForm();show("tickets")};
 $("save").onclick=async()=>{if(await saveTicket())done()};
@@ -313,11 +323,11 @@ function sortKey(t){const d=String(t.dt||"").trim();let m=d.match(/^(\d{1,2})\/(
 function fmtDt(d){const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]+" "+m[4]+":"+m[5]:String(d||"")}
 function render(){const q=$("q").value.toLowerCase();
  const list=[...S.tickets].sort((a,b)=>sortKey(b).localeCompare(sortKey(a))||(parseInt(b.no,10)||0)-(parseInt(a.no,10)||0)).filter(t=>!q||JSON.stringify({...t,sigO:0,sigD:0,sigR:0}).toLowerCase().includes(q));
- $("rows").innerHTML=list.map(t=>{const T=tot(t.w),n=esc(t.no);return`<tr><td>${n}</td><td>${esc(fmtDt(t.dt))}</td><td>${esc(t.rego)}</td><td>${esc(t.carrier)}</td><td>${esc(t.receiver)}</td><td>${esc(t.product)}</td><td class="n">${fmt(T.t)}</td><td class="n">${fmt(T.g)}</td><td class="n">${fmt(T.n)}</td><td><button class="sm" data-a="p" data-n="${n}">Print</button> <button class="sm" data-a="m" data-n="${n}">Email</button> <button class="sm" data-a="e" data-n="${n}">Edit</button> <button class="sm dg" data-a="d" data-n="${n}">Delete</button></td></tr>`}).join("");
+ $("rows").innerHTML=list.map(t=>{const T=tot(t.w),n=esc(t.no);return`<tr><td>${n}</td><td>${esc(t.dno||"")}</td><td>${esc(fmtDt(t.dt))}</td><td>${esc(t.rego)}</td><td>${esc(t.carrier)}</td><td>${esc(t.receiver)}</td><td>${esc(t.product)}</td><td class="n">${fmt(T.t)}</td><td class="n">${fmt(T.g)}</td><td class="n">${fmt(T.n)}</td><td><button class="sm" data-a="p" data-n="${n}">Print</button> <button class="sm" data-a="m" data-n="${n}">Email</button> <button class="sm" data-a="e" data-n="${n}">Edit</button> <button class="sm dg" data-a="d" data-n="${n}">Delete</button></td></tr>`}).join("");
  $("empty").hidden=list.length>0;const tn=list.reduce((a,t)=>a+tot(t.w).n,0);$("tot").textContent=list.length+" tickets, "+fmt(tn)+" kg net";
  }
 function renderDirs(){["carriers","senders","receivers","products"].forEach(k=>{if(!$("dl-"+k).contains(document.activeElement))renderDir(k)})}
-function fillHdr(){try{const m=localStorage.getItem(KEY+"-mailerr");if(m){$("mailerr").textContent="Last email problem: "+m;$("mailerr").hidden=false}}catch(e){}if($("v-hdr").contains(document.activeElement))return;$("h-name").value=S.hdr.name||"";$("h-abn").value=S.hdr.abn||"";$("h-addr").value=S.hdr.addr||"";["contact","phone","email","web","mail1","mail2","mail3"].forEach(k=>$("h-"+k).value=S.hdr[k]||"");$("h-next").value=S.hdr.next||1}
+function fillHdr(){try{const m=localStorage.getItem(KEY+"-mailerr");if(m){$("mailerr").textContent="Last email problem: "+m;$("mailerr").hidden=false}}catch(e){}if($("v-hdr").contains(document.activeElement))return;$("h-name").value=S.hdr.name||"";$("h-abn").value=S.hdr.abn||"";$("h-addr").value=S.hdr.addr||"";["contact","phone","email","web","mail1","mail2","mail3"].forEach(k=>$("h-"+k).value=S.hdr[k]||"");$("h-next").value=S.hdr.next||1;$("h-dnext").value=S.hdr.dnext||S.hdr.next||1}
 $("q").oninput=render;
 $("rows").onclick=async e=>{const b=e.target.closest("button");if(!b)return;const t=S.tickets.find(x=>x.no===b.dataset.n);if(!t)return;const a=b.dataset.a;
  if("vpxe".includes(a)){if(a==="x"&&!anySel())return;await withSigs(t)}
@@ -348,7 +358,7 @@ document.addEventListener("input",e=>{const d=e.target.dataset;if(d&&d.k){S.dir[
 document.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b)return;
  if(b.dataset.add){S.dir[b.dataset.add].push({name:""});putDir();renderDir(b.dataset.add)}
  if(b.dataset.del){const k=b.dataset.del,i=+b.dataset.i;if(await ask("Delete "+(S.dir[k][i].name||"this entry")+" from the directory? Old tickets are not changed.","Delete","Cancel")){S.dir[k].splice(i,1);putDir();renderDir(k)}}});
-$("savehdr").onclick=()=>{S.hdr={name:$("h-name").value,abn:$("h-abn").value,addr:$("h-addr").value,contact:$("h-contact").value.trim(),phone:$("h-phone").value.trim(),email:$("h-email").value.trim(),web:$("h-web").value.trim(),mail1:$("h-mail1").value.trim(),mail2:$("h-mail2").value.trim(),mail3:$("h-mail3").value.trim(),next:parseInt($("h-next").value,10)||1};putHdr();toast("Business info saved.")};
+$("savehdr").onclick=()=>{S.hdr={name:$("h-name").value,abn:$("h-abn").value,addr:$("h-addr").value,contact:$("h-contact").value.trim(),phone:$("h-phone").value.trim(),email:$("h-email").value.trim(),web:$("h-web").value.trim(),mail1:$("h-mail1").value.trim(),mail2:$("h-mail2").value.trim(),mail3:$("h-mail3").value.trim(),next:parseInt($("h-next").value,10)||1,dnext:parseInt($("h-dnext").value,10)||1};putHdr();toast("Business info saved.")};
 
 // dockets
 const DCSS=`.sheet{width:190mm;margin:0 auto;font:12px/1.35 Arial,sans-serif;color:#000;}.sheet+.sheet{page-break-before:always}*{box-sizing:border-box}
@@ -368,7 +378,7 @@ function addrLines(a){const out=[];String(a||"").split("\n").map(x=>x.trim()).fi
 function hdrBlock(t,title,label){const h=S.hdr;const al=addrLines(h.addr);
  const info=[...al.map(esc),h.contact||h.phone?[h.contact,h.phone].filter(Boolean).map(esc).join(" &nbsp;·&nbsp; "):"",h.email?esc(h.email):""].filter(Boolean);
  // logo is as tall as the block of details beside it
- return`<div class="dh"><div class="lg"><div class="lgc"><img class="logo" style="height:${(Math.max(info.length,2)*1.35*11).toFixed(1)}px" src="${LOGO}" alt="Red Range Stock Supplements">${h.web?`<div class="web">${esc(h.web)}</div>`:""}${h.abn?`<div class="web">ABN ${esc(h.abn)}</div>`:""}</div><div class="hinfo">${info.join("<br>")}</div></div><div class="r"><b class="ttl">${title}</b><br><span class="tk">Ticket <span class="tn">${esc(t.no)}</span></span><br>${esc(fmtDt(t.dt))}${label?`<br><span class="lb">${label}</span>`:""}</div></div>`}
+ return`<div class="dh"><div class="lg"><div class="lgc"><img class="logo" style="height:${(Math.max(info.length,2)*1.35*11).toFixed(1)}px" src="${LOGO}" alt="Red Range Stock Supplements">${h.web?`<div class="web">${esc(h.web)}</div>`:""}${h.abn?`<div class="web">ABN ${esc(h.abn)}</div>`:""}</div><div class="hinfo">${info.join("<br>")}</div></div><div class="r"><b class="ttl">${title}</b><br><span class="tk">${label==="__wb"?"Weighbridge":"Docket"} <span class="tn">${esc(label==="__wb"?t.no:(t.dno||t.no))}</span></span><br>${esc(fmtDt(t.dt))}</div></div>`}
 function sigBlock(t){return`<div class="sg"><div>${sigImg(t.sigO)}Sender signature</div><div>${t.pickup?'<b class="pk">CUSTOMER PICKUP</b>':sigImg(t.sigD)}Driver signature</div><div>${sigImg(t.sigR)}Receiver signature</div></div>`}
 function infoTable(t,extra){return`<table class="dt"><tr><td class="k">Freight provider</td><td>${esc(t.carrier)}</td><td class="k">Vehicle rego</td><td>${esc(t.rego)}</td></tr><tr><td class="k">Sender (from)</td><td>${esc(t.sender)}</td><td class="k">Driver</td><td>${esc(t.driver)}</td></tr><tr><td class="k">Receiver (to)</td><td>${esc(t.receiver)}</td><td class="k">Order / ref</td><td>${esc(t.ref)}</td></tr><tr><td class="k">Product</td><td>${esc(t.product)}</td><td class="k">Bales</td><td>${esc(t.bales)}${extra}</td></tr></table>`}
 function avgTxt(t,T){const b=num(t.bales);return b>0?` <span class="avg">avg ${(T.n/b).toFixed(1)} kg</span>`:""}
@@ -377,7 +387,7 @@ function rcvContact(t){const e=S.dir.receivers.find(x=>(x.name||"").toLowerCase(
 function delivery(t,label){const T=tot(t.w);const r=(k1,v1,k2,v2)=>`<tr><td class="k">${k1}</td><td>${v1}</td><td class="k">${k2}</td><td>${v2}</td></tr>`;
  return`<div class="d">${hdrBlock(t,"DELIVERY DOCKET","")}<table class="dt">${r("Sender",esc(t.sender),"Receiver",esc(t.receiver))}${r("Freight provider",esc(t.carrier),"Contact",esc(rcvContact(t)))}${r("Vehicle rego",esc(t.rego),"Order / ref",esc(t.ref))}${r("Driver",esc(t.driver),"Product",esc(t.product))}</table><table class="dt wt"><tr><td class="k">Bales</td><td>${esc(t.bales)}${avgTxt(t,T)}</td><td class="k">Tare</td><td>${fmt(T.t)} kg</td><td class="k">Gross</td><td>${fmt(T.g)} kg</td><td class="k">NET</td><td class="big">${fmt(T.n)} kg</td></tr></table>${t.notes?`<div style="font-size:10px">Notes: ${esc(t.notes)}</div>`:""}${sigBlock(t)}<div class="cp"><span class="lb">${label}</span></div></div>`}
 function weighbridge(t){const T=tot(t.w);const rows=t.w.map((x,i)=>has(x.t)&&has(x.g)?`<tr><td>Weighing ${i+1}</td><td>${fmt(num(x.t))}</td><td>${fmt(num(x.g))}</td><td>${fmt(num(x.g)-num(x.t))}</td></tr>`:"").join("");
- return`<div class="d w">${hdrBlock(t,"WEIGHBRIDGE DOCKET","")}${infoTable(t,avgTxt(t,T))}<table class="dt"><tr><th>Weighing</th><th>Tare (kg)</th><th>Gross (kg)</th><th>Net (kg)</th></tr>${rows}<tr><th>Total</th><th>${fmt(T.t)}</th><th>${fmt(T.g)}</th><th class="big">${fmt(T.n)} kg</th></tr></table>${t.notes?`<div style="font-size:10px">Notes: ${esc(t.notes)}</div>`:""}</div>`}
+ return`<div class="d w">${hdrBlock(t,"WEIGHBRIDGE DOCKET","__wb")}${infoTable(t,avgTxt(t,T))}<table class="dt"><tr><th>Weighing</th><th>Tare (kg)</th><th>Gross (kg)</th><th>Net (kg)</th></tr>${rows}<tr><th>Total</th><th>${fmt(T.t)}</th><th>${fmt(T.g)}</th><th class="big">${fmt(T.n)} kg</th></tr></table>${t.notes?`<div style="font-size:10px">Notes: ${esc(t.notes)}</div>`:""}</div>`}
 function anySel(){if(!wbN()&&!dCopies().length){toast("Choose weighbridge docket copies or at least one delivery docket copy.");return false}return true}
 // print choices: weighbridge docket copies (0-3) and which delivery docket copies; each kind fits up to 3 on one A4 page
 const wbN=()=>parseInt($("pwn").value,10)||0;
