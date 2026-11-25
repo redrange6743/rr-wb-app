@@ -289,23 +289,26 @@ function combo(id,kind){const inp=$(id),box=document.createElement("div");box.cl
 const FIELDS=["no","dno","dt","rego","driver","carrier","sender","receiver","product","ref","bales","notes"];
 let editing=null;
 function nowLocal(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)}
-function resetForm(){editing=null;FIELDS.forEach(f=>$(f).value="");for(let i=1;i<=4;i++){$("t"+i).value="";$("g"+i).value=""}SIG={o:"",d:"",r:"",pickup:false};renderSigs();$("no").value=S.hdr.next||1;$("dt").value=nowLocal();calc();syncDno()}
+function resetForm(){editing=null;lockNos(false);FIELDS.forEach(f=>$(f).value="");for(let i=1;i<=4;i++){$("t"+i).value="";$("g"+i).value=""}SIG={o:"",d:"",r:"",pickup:false};renderSigs();$("no").value=S.hdr.next||1;$("dt").value=nowLocal();calc();syncDno()}
+// once a ticket is saved its weighbridge and docket numbers are fixed
+function lockNos(on,t){["no","dno"].forEach(id=>{$(id).readOnly=on;$(id).style.opacity=on?.6:1});$("dno").placeholder=on&&t&&!t.dno&&saleType(t.product)?"Same as weighbridge no.":""}
 // docket numbers: only for sales (Bales-Cotton Seed or Bulk-Cotton Seed), with their own counter
 const saleType=p=>{const k=String(p||"").toLowerCase().replace(/[^a-z]/g,"");return k==="balescottonseed"?"Bale Sales":k==="bulkcottonseed"?"Bulk Sales":""};
 function docketNext(){return Math.max(num(S.hdr.dnext)||num(S.hdr.next)||1,...S.tickets.filter(t=>t.no!==editing).map(t=>(parseInt(t.dno,10)||0)+1))}
-function syncDno(){const sale=saleType($("product").value);if(sale&&!$("dno").value)$("dno").value=docketNext();if(!sale)$("dno").value=""}
+function syncDno(){if(editing!==null)return;const sale=saleType($("product").value);if(sale&&!$("dno").value)$("dno").value=docketNext();if(!sale)$("dno").value=""}
 $("product").addEventListener("input",syncDno);$("product").addEventListener("change",syncDno);
 function readForm(){const o={};FIELDS.forEach(f=>o[f]=$(f).value);o.w=formW();o.sigO=SIG.o;o.sigD=SIG.d;o.sigR=SIG.r;o.pickup=SIG.pickup;return o}
 async function offerNew(o){const miss=[];[["carrier","carriers","freight provider"],["sender","senders","sender"],["receiver","receivers","receiver"],["product","products","product"]].forEach(([f,k,l])=>{const v=(o[f]||"").trim();if(v&&!S.dir[k].some(e=>e.name.toLowerCase()===v.toLowerCase()))miss.push([k,l,v])});for(const [k,l,v] of miss){if(await ask('"'+v+'" is not in the '+l+' directory. Save it? You can add details later.',"Save to directory","Not now")){S.dir[k].push({name:v});putDir();renderDir(k)}}}
 async function saveTicket(){const o=readForm();if(!o.no){toast("Enter a ticket number.");return null}
- if(saleType(o.product)){if(!o.dno)o.dno=String(docketNext())}else o.dno="";
+ if(editing!==null){const orig=S.tickets.find(t=>t.no===editing);o.no=editing;o.dno=orig?(orig.dno||""):o.dno}   // numbers never change on an edit
+ else if(saleType(o.product)){if(!o.dno)o.dno=String(docketNext())}else o.dno="";
  if(o.dno&&S.tickets.some(t=>t.dno===o.dno&&t.no!==editing)){toast("Docket number "+o.dno+" is already used.");return null}
  if(!sigOk(o)){toast(o.sigO?"The driver or the receiver needs to sign.":"The sender needs to sign.");openSig(o.sigO?1:0);return null}
  if(S.tickets.some(t=>t.no===o.no&&t.no!==editing)){toast("Ticket number "+o.no+" already exists.");return null}
  await offerNew(o);
  const old=editing;if(editing!==null){const i=S.tickets.findIndex(t=>t.no===editing);if(i>-1)S.tickets[i]=o;else S.tickets.push(o)}
  else S.tickets.push(o);
- const n=parseInt(o.no,10),dn=parseInt(o.dno,10);let hc=false;if(!isNaN(n)&&n>=num(S.hdr.next)){S.hdr.next=n+1;hc=true}if(!isNaN(dn)&&dn>=num(S.hdr.dnext||S.hdr.next)){S.hdr.dnext=dn+1;hc=true}if(hc){putHdr();fillHdr()}
+ const n=editing===null?parseInt(o.no,10):NaN,dn=editing===null?parseInt(o.dno,10):NaN;let hc=false;if(!isNaN(n)&&n>=num(S.hdr.next)){S.hdr.next=n+1;hc=true}if(!isNaN(dn)&&dn>=num(S.hdr.dnext||S.hdr.next)){S.hdr.dnext=dn+1;hc=true}if(hc){putHdr();fillHdr()}
  putTicket(o,old);render();return o}
 const done=()=>{resetForm();show("tickets")};
 $("save").onclick=async()=>{if(await saveTicket())done()};
@@ -336,7 +339,7 @@ $("rows").onclick=async e=>{const b=e.target.closest("button");if(!b)return;cons
  if(a==="m"){if(![S.hdr.mail1,S.hdr.mail2,S.hdr.mail3].some(x=>x&&x.includes("@"))){toast("Add an email address in Business info first.");return}
   if(await ask("Email ticket "+t.no+" to the office again?","Send","Cancel")){toast("Sending ticket "+t.no+"…");enqueue({op:"mail",no:t.no})}}
  if(a==="d"&&await ask("Delete ticket "+t.no+"? This cannot be undone.","Delete","Cancel")){S.tickets=S.tickets.filter(x=>x!==t);delTicket(t.no);render()}
- if(a==="e"){FIELDS.forEach(f=>$(f).value=t[f]||"");t.w.forEach((x,i)=>{$("t"+(i+1)).value=x.t;$("g"+(i+1)).value=x.g});SIG={o:t.sigO||"",d:t.sigD||"",r:t.sigR||"",pickup:!!t.pickup};renderSigs();editing=t.no;calc();show("new")}};
+ if(a==="e"){FIELDS.forEach(f=>$(f).value=t[f]||"");t.w.forEach((x,i)=>{$("t"+(i+1)).value=x.t;$("g"+(i+1)).value=x.g});SIG={o:t.sigO||"",d:t.sigD||"",r:t.sigR||"",pickup:!!t.pickup};renderSigs();editing=t.no;lockNos(true,t);calc();show("new")}};
 
 $("fromtk").onclick=()=>{let n=0;[["carrier","carriers"],["sender","senders"],["receiver","receivers"],["product","products"]].forEach(([f,k])=>S.tickets.forEach(t=>{const v=(t[f]||"").trim();if(v&&!S.dir[k].some(e=>e.name.toLowerCase()===v.toLowerCase())){S.dir[k].push({name:v});n++}}));if(n)putDir();renderDirs();toast(n?n+" names added to the directory.":"No new names found in your tickets.")};
 // export / import
