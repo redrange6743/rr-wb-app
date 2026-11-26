@@ -42,6 +42,7 @@ td.n,th.n{text-align:right}
 .sug div{padding:10px;cursor:pointer}
 .sug div.on{background:var(--ac);color:var(--ac2)}
 .rel{position:relative}
+.wgrid{display:grid;grid-template-rows:repeat(5,auto);grid-auto-flow:column;grid-template-columns:minmax(150px,auto) minmax(110px,1fr) minmax(110px,1fr) minmax(70px,auto);min-width:480px}.wgrid>div{padding:8px;border-bottom:1px solid var(--bd);display:flex;align-items:center}.wgrid .wh{font-weight:700}.wgrid .n{justify-content:flex-end}
 canvas.pad{width:100%;height:120px;background:#fff;border:1px solid var(--bd);border-radius:8px;touch-action:none;display:block}
 .bad{color:var(--dg)}
 #prev{position:fixed;inset:0;background:#e9e9e9;z-index:20;overflow:auto;display:none}
@@ -95,7 +96,7 @@ button:disabled{opacity:.45;cursor:default}
 <div><label>Bales loaded</label><input id="bales" type="number" min="0" inputmode="numeric"></div>
 </div></div>
 <div class="card"><p class="mu" style="margin-top:0">Weighing 1 can be the truck and first trailer, weighing 2 the second and third trailers, and so on. Leave unused rows blank.</p>
-<div class="scroll"><table><thead><tr><th>Weighing</th><th>Tare (kg)</th><th>Gross (kg)</th><th class="n">Net (kg)</th></tr></thead><tbody id="w"></tbody></table></div></div>
+<div class="scroll"><div id="w" class="wgrid"></div></div></div>
 <div class="card"><div class="grid2"><div><label>Total tare</label><b id="ttare">0 kg</b></div><div><label>Total gross</label><b id="tgross">0 kg</b></div><div><label>NET WEIGHT</label><div class="net" id="nkg">0 kg</div><div class="mu" id="avgb"></div></div></div></div>
 <div class="card"><label>Notes</label><textarea id="notes" rows="3"></textarea></div>
 <div class="card"><div class="row" style="margin-bottom:8px"><b>Signatures</b><span class="mu" style="font-size:13px">Sender signs, then the driver or the receiver. Tap a box to sign.</span></div>
@@ -231,7 +232,10 @@ TABS.forEach(([k,l])=>{const b=document.createElement("button");b.className="tab
 
 // weighings (tare before gross)
 const WL=["Weighing 1 (truck + 1st trailer)","Weighing 2 (2nd + 3rd trailers)","Weighing 3","Weighing 4"];
-WL.forEach((l,i)=>{const n=i+1;$("w").insertAdjacentHTML("beforeend",`<tr><td>${l}</td><td><input type="number" min="0" inputmode="numeric" id="t${n}"></td><td><input type="number" min="0" inputmode="numeric" id="g${n}"></td><td class="n" id="n${n}">0</td></tr>`);["t","g"].forEach(p=>$(p+n).oninput=calc)});
+// laid out column by column, so Tab (desktop) and Next (tablet) go through all tare weights first, then all gross weights
+{const N=[1,2,3,4],inp=(p,n)=>`<div class="wc"><input type="number" min="0" inputmode="numeric" enterkeyhint="next" id="${p}${n}"></div>`;
+ $("w").innerHTML=`<div class="wh">Weighing</div>${WL.map(l=>`<div class="wc">${l}</div>`).join("")}<div class="wh">Tare (kg)</div>${N.map(n=>inp("t",n)).join("")}<div class="wh">Gross (kg)</div>${N.map(n=>inp("g",n)).join("")}<div class="wh n">Net (kg)</div>${N.map(n=>`<div class="wc n" id="n${n}">0</div>`).join("")}`;
+ N.forEach(n=>["t","g"].forEach(p=>$(p+n).oninput=calc))}
 function formW(){return[1,2,3,4].map(i=>({t:$("t"+i).value,g:$("g"+i).value}))}
 function calc(){const w=formW();w.forEach((x,i)=>{const c=$("n"+(i+1));if(has(x.t)&&has(x.g)){const n=num(x.g)-num(x.t);c.textContent=n<0?"check":fmt(n);c.classList.toggle("bad",n<0)}else{c.textContent="0";c.classList.remove("bad")}});
  const T=tot(w);$("ttare").textContent=fmt(T.t)+" kg";$("tgross").textContent=fmt(T.g)+" kg";$("nkg").textContent=fmt(T.n)+" kg";const b=num($("bales").value);$("avgb").textContent=b>0&&T.n>0?"AVG BALE "+(T.n/b).toFixed(1)+" kg":""}
@@ -316,7 +320,7 @@ $("savep").onclick=async()=>{const o=await saveTicket();if(o){done();preview(o)}
 $("saved").onclick=async()=>{if(!anySel())return;const o=await saveTicket();if(o){download(o);done()}};
 $("prevf").onclick=()=>preview(readForm());
 $("clear").onclick=resetForm;
-$("w").parentNode.oninput=calc;$("bales").oninput=calc;
+$("w").oninput=calc;$("bales").oninput=calc;
 
 // register
 // newest first: by date and time, then by ticket number (copes with dd/mm/yyyy or yyyy-mm-dd dates)
@@ -326,7 +330,7 @@ function sortKey(t){const d=String(t.dt||"").trim();let m=d.match(/^(\d{1,2})\/(
 function fmtDt(d){const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]+" "+m[4]+":"+m[5]:String(d||"")}
 function render(){const q=$("q").value.toLowerCase();
  const list=[...S.tickets].sort((a,b)=>sortKey(b).localeCompare(sortKey(a))||(parseInt(b.no,10)||0)-(parseInt(a.no,10)||0)).filter(t=>!q||JSON.stringify({...t,sigO:0,sigD:0,sigR:0}).toLowerCase().includes(q));
- $("rows").innerHTML=list.map(t=>{const T=tot(t.w),n=esc(t.no);return`<tr><td>${n}</td><td>${esc(t.dno||"")}</td><td>${esc(fmtDt(t.dt))}</td><td>${esc(t.rego)}</td><td>${esc(t.carrier)}</td><td>${esc(t.receiver)}</td><td>${esc(t.product)}</td><td class="n">${fmt(T.t)}</td><td class="n">${fmt(T.g)}</td><td class="n">${fmt(T.n)}</td><td><button class="sm" data-a="p" data-n="${n}">Print</button> <button class="sm" data-a="m" data-n="${n}">Email</button> <button class="sm" data-a="e" data-n="${n}">Edit</button> <button class="sm dg" data-a="d" data-n="${n}">Delete</button></td></tr>`}).join("");
+ $("rows").innerHTML=list.map(t=>{const T=tot(t.w),n=esc(t.no);return`<tr><td>${n}</td><td>${esc(t.dno||(saleType(t.product)?t.no:""))}</td><td>${esc(fmtDt(t.dt))}</td><td>${esc(t.rego)}</td><td>${esc(t.carrier)}</td><td>${esc(t.receiver)}</td><td>${esc(t.product)}</td><td class="n">${fmt(T.t)}</td><td class="n">${fmt(T.g)}</td><td class="n">${fmt(T.n)}</td><td><button class="sm" data-a="p" data-n="${n}">Print</button> <button class="sm" data-a="m" data-n="${n}">Email</button> <button class="sm" data-a="e" data-n="${n}">Edit</button> <button class="sm dg" data-a="d" data-n="${n}">Delete</button></td></tr>`}).join("");
  $("empty").hidden=list.length>0;const tn=list.reduce((a,t)=>a+tot(t.w).n,0);$("tot").textContent=list.length+" tickets, "+fmt(tn)+" kg net";
  }
 function renderDirs(){["carriers","senders","receivers","products"].forEach(k=>{if(!$("dl-"+k).contains(document.activeElement))renderDir(k)})}
@@ -356,7 +360,7 @@ $("impfile").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new Fil
 // directory (editable, saves as you type)
 const LBL={carriers:["Owner or depot manager","Second contact"],senders:["Contact 1","Contact 2"],receivers:["Contact 1","Contact 2"]};
 function renderDir(k){const box=$("dl-"+k);box.innerHTML=S.dir[k].map((e,i)=>{const f=(fld,lab,ph)=>`<div><label>${lab}</label><input data-k="${k}" data-i="${i}" data-f="${fld}" value="${esc(e[fld])}" ${ph||""}></div>`;
- const c=LBL[k];return`<div class="card" style="background:var(--bg)"><div class="grid">${f("name","Name")}${c?f("c1n",c[0]+" name")+f("c1p",c[0]+" phone",'type="tel"')+f("c2n",c[1]+" name")+f("c2p",c[1]+" phone",'type="tel"'):""}</div><p style="margin:10px 0 0"><button class="sm dg" data-del="${k}" data-i="${i}">Delete</button></p></div>`}).join("")||'<p class="mu">Nothing here yet.</p>'}
+ const c=LBL[k];return`<div class="card" style="background:var(--bg)"><div class="grid">${f("name","Name")}${k==="senders"?f("code","Sender Code",'style="text-transform:uppercase"'):""}${c?f("c1n",c[0]+" name")+f("c1p",c[0]+" phone",'type="tel"')+f("c2n",c[1]+" name")+f("c2p",c[1]+" phone",'type="tel"'):""}</div><p style="margin:10px 0 0"><button class="sm dg" data-del="${k}" data-i="${i}">Delete</button></p></div>`}).join("")||'<p class="mu">Nothing here yet.</p>'}
 document.addEventListener("input",e=>{const d=e.target.dataset;if(d&&d.k){S.dir[d.k][d.i][d.f]=e.target.value;putDirSoon()}});
 document.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b)return;
  if(b.dataset.add){S.dir[b.dataset.add].push({name:""});putDir();renderDir(b.dataset.add)}
@@ -368,7 +372,7 @@ const DCSS=`.sheet{width:190mm;margin:0 auto;font:12px/1.35 Arial,sans-serif;col
 .d{height:90mm;border-bottom:1px dashed #666;padding:2mm 0;overflow:hidden}.d:last-child{border-bottom:0}
 .dh{display:flex;justify-content:space-between;gap:8px;border-bottom:2px solid #000;padding-bottom:2px;margin-bottom:3px}
 .co{font-size:15px}.lg{display:flex;gap:4mm;align-items:center;font-size:11px;line-height:1.35}.lgc{display:flex;flex-direction:column;align-items:center}.web{font-size:10px;margin-top:1mm;white-space:nowrap}.lgc .web+.web{margin-top:0}.hinfo{white-space:nowrap}.logo{height:12mm;width:auto;display:block}.r{text-align:right}.lb{font-weight:700;border:1px solid #000;padding:0 4px}
-.dt{width:100%;border-collapse:collapse;margin:2px 0}.dt td,.dt th{border:1px solid #999;padding:2px 5px;text-align:left;font-size:11px;white-space:normal}.dt .k{background:#eee;width:15%;font-weight:700}.dt.wt .k{width:auto}.d{position:relative}.tk{font-size:18px;font-weight:700;line-height:1.2}.tn{color:#c62828}.ttl{color:#c62828}.cp{position:absolute;right:0;bottom:2mm;font-size:12px}
+.dt{width:100%;border-collapse:collapse;margin:2px 0}.dt td,.dt th{border:1px solid #999;padding:2px 5px;text-align:left;font-size:11px;white-space:normal}.dt .k{background:#eee;width:15%;font-weight:700}.dt.wt .k{width:auto}.d{position:relative}.tk{font-size:18px;font-weight:700;line-height:1.2}.tn{color:#c62828}.ttl{color:#c62828}.oref{font-size:11px}.cp{position:absolute;right:0;bottom:2mm;font-size:12px}
 .big{font-size:15px;font-weight:700}.avg{font-size:8px;color:#888;font-weight:400}
 .sg{display:flex;gap:10mm;margin-top:2mm}.sg div{flex:1;border-top:1px solid #000;font-size:9px;padding-top:1px;position:relative}.sg img{position:absolute;bottom:100%;left:0;height:11mm;max-width:100%;object-fit:contain;object-position:left bottom}.sg .pk{position:absolute;bottom:100%;left:0;font-size:12px;padding-bottom:1mm}.sg{gap:6mm}
 .d .sg{margin-top:12mm}.w .sg{margin-top:11mm}.w .dt th,.w .dt td{padding:1px 5px}`;
@@ -381,14 +385,14 @@ function addrLines(a){const out=[];String(a||"").split("\n").map(x=>x.trim()).fi
 function hdrBlock(t,title,label){const h=S.hdr;const al=addrLines(h.addr);
  const info=[...al.map(esc),h.contact||h.phone?[h.contact,h.phone].filter(Boolean).map(esc).join(" &nbsp;·&nbsp; "):"",h.email?esc(h.email):""].filter(Boolean);
  // logo is as tall as the block of details beside it
- return`<div class="dh"><div class="lg"><div class="lgc"><img class="logo" style="height:${(Math.max(info.length,2)*1.35*11).toFixed(1)}px" src="${LOGO}" alt="Red Range Stock Supplements">${h.web?`<div class="web">${esc(h.web)}</div>`:""}${h.abn?`<div class="web">ABN ${esc(h.abn)}</div>`:""}</div><div class="hinfo">${info.join("<br>")}</div></div><div class="r"><b class="ttl">${title}</b><br><span class="tk">${label==="__wb"?"Weighbridge":"Docket"} <span class="tn">${esc(label==="__wb"?t.no:(t.dno||t.no))}</span></span><br>${esc(fmtDt(t.dt))}</div></div>`}
+ return`<div class="dh"><div class="lg"><div class="lgc"><img class="logo" style="height:${(Math.max(info.length,2)*1.35*11).toFixed(1)}px" src="${LOGO}" alt="Red Range Stock Supplements">${h.web?`<div class="web">${esc(h.web)}</div>`:""}${h.abn?`<div class="web">ABN ${esc(h.abn)}</div>`:""}</div><div class="hinfo">${info.join("<br>")}</div></div><div class="r"><b class="ttl">${title}</b><br><span class="tk">${label==="__wb"?"Weighbridge":"Docket"} <span class="tn">${esc(label==="__wb"?t.no:(t.dno||t.no))}</span></span><br>${esc(fmtDt(t.dt))}${label==="__wb"?"":`<br><span class="oref">Order / ref: <b>${esc(t.ref||"")}</b></span>`}</div></div>`}
 function sigBlock(t){return`<div class="sg"><div>${sigImg(t.sigO)}Sender signature</div><div>${t.pickup?'<b class="pk">CUSTOMER PICKUP</b>':sigImg(t.sigD)}Driver signature</div><div>${sigImg(t.sigR)}Receiver signature</div></div>`}
 function infoTable(t,extra){return`<table class="dt"><tr><td class="k">Freight provider</td><td>${esc(t.carrier)}</td><td class="k">Vehicle rego</td><td>${esc(t.rego)}</td></tr><tr><td class="k">Sender (from)</td><td>${esc(t.sender)}</td><td class="k">Driver</td><td>${esc(t.driver)}</td></tr><tr><td class="k">Receiver (to)</td><td>${esc(t.receiver)}</td><td class="k">Order / ref</td><td>${esc(t.ref)}</td></tr><tr><td class="k">Product</td><td>${esc(t.product)}</td><td class="k">Bales</td><td>${esc(t.bales)}${extra}</td></tr></table>`}
 function avgTxt(t,T){const b=num(t.bales);return b>0?` <span class="avg">avg ${(T.n/b).toFixed(1)} kg</span>`:""}
 // receiver's contact (name and phone) from the Receivers directory
-function rcvContact(t){const e=S.dir.receivers.find(x=>(x.name||"").toLowerCase()===String(t.receiver||"").trim().toLowerCase());return e?[e.c1n,e.c1p].filter(Boolean).join("  "):""}
+function rcvContact(t){const e=S.dir.receivers.find(x=>(x.name||"").toLowerCase()===String(t.receiver||"").trim().toLowerCase());if(!e)return[];return[[e.c1n,e.c1p],[e.c2n,e.c2p]].map(c=>c.filter(Boolean).join("  ")).filter(Boolean)}
 function delivery(t,label){const T=tot(t.w);const r=(k1,v1,k2,v2)=>`<tr><td class="k">${k1}</td><td>${v1}</td><td class="k">${k2}</td><td>${v2}</td></tr>`;
- return`<div class="d">${hdrBlock(t,"DELIVERY DOCKET","")}<table class="dt">${r("Sender",esc(t.sender),"Receiver",esc(t.receiver))}${r("Freight provider",esc(t.carrier),"Contact",esc(rcvContact(t)))}${r("Vehicle rego",esc(t.rego),"Order / ref",esc(t.ref))}${r("Driver",esc(t.driver),"Product",esc(t.product))}</table><table class="dt wt"><tr><td class="k">Bales</td><td>${esc(t.bales)}${avgTxt(t,T)}</td><td class="k">Tare</td><td>${fmt(T.t)} kg</td><td class="k">Gross</td><td>${fmt(T.g)} kg</td><td class="k">NET</td><td class="big">${fmt(T.n)} kg</td></tr></table>${t.notes?`<div style="font-size:10px">Notes: ${esc(t.notes)}</div>`:""}${sigBlock(t)}<div class="cp"><span class="lb">${label}</span></div></div>`}
+ return`<div class="d">${hdrBlock(t,"DELIVERY DOCKET","")}<table class="dt">${r("Sender",esc(t.sender),"Receiver",esc(t.receiver))}<tr><td class="k">Freight provider</td><td>${esc(t.carrier)}</td><td class="k" rowspan="2">Contact</td><td rowspan="2">${rcvContact(t).map(esc).join("<br>")}</td></tr><tr><td class="k">Vehicle rego</td><td>${esc(t.rego)}</td></tr>${r("Driver",esc(t.driver),"Product",esc(t.product))}</table><table class="dt wt"><tr><td class="k">Bales</td><td>${esc(t.bales)}${avgTxt(t,T)}</td><td class="k">Tare</td><td>${fmt(T.t)} kg</td><td class="k">Gross</td><td>${fmt(T.g)} kg</td><td class="k">NET</td><td class="big">${fmt(T.n)} kg</td></tr></table>${t.notes?`<div style="font-size:10px">Notes: ${esc(t.notes)}</div>`:""}${sigBlock(t)}<div class="cp"><span class="lb">${label}</span></div></div>`}
 function weighbridge(t){const T=tot(t.w);const rows=t.w.map((x,i)=>has(x.t)&&has(x.g)?`<tr><td>Weighing ${i+1}</td><td>${fmt(num(x.t))}</td><td>${fmt(num(x.g))}</td><td>${fmt(num(x.g)-num(x.t))}</td></tr>`:"").join("");
  return`<div class="d w">${hdrBlock(t,"WEIGHBRIDGE DOCKET","__wb")}${infoTable(t,avgTxt(t,T))}<table class="dt"><tr><th>Weighing</th><th>Tare (kg)</th><th>Gross (kg)</th><th>Net (kg)</th></tr>${rows}<tr><th>Total</th><th>${fmt(T.t)}</th><th>${fmt(T.g)}</th><th class="big">${fmt(T.n)} kg</th></tr></table>${t.notes?`<div style="font-size:10px">Notes: ${esc(t.notes)}</div>`:""}</div>`}
 function anySel(){if(!wbN()&&!dCopies().length){toast("Choose weighbridge docket copies or at least one delivery docket copy.");return false}return true}
