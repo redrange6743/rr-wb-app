@@ -297,7 +297,8 @@ function resetForm(){editing=null;lockNos(false);FIELDS.forEach(f=>$(f).value=""
 // once a ticket is saved its weighbridge and docket numbers are fixed
 function lockNos(on,t){["no","dno"].forEach(id=>{$(id).readOnly=on;$(id).style.opacity=on?.6:1});$("dno").placeholder=on&&t&&!t.dno&&saleType(t.product)?"Same as weighbridge no.":""}
 // docket numbers: only for sales (Bales-Cotton Seed or Bulk-Cotton Seed), with their own counter
-const saleType=p=>{const k=String(p||"").toLowerCase().replace(/[^a-z]/g,"");return k==="balescottonseed"?"Bale Sales":k==="bulkcottonseed"?"Bulk Sales":""};
+// any product mentioning cotton and bale(s) is a bale sale; cotton and bulk is a bulk sale (spelling and word order don't matter)
+const saleType=p=>{const k=String(p||"").toLowerCase();return !k.includes("cotton")?"":/bale/.test(k)?"Bale Sales":/bulk/.test(k)?"Bulk Sales":""};
 function docketNext(){return Math.max(num(S.hdr.dnext)||num(S.hdr.next)||1,...S.tickets.filter(t=>t.no!==editing).map(t=>(parseInt(t.dno,10)||0)+1))}
 function syncDno(){if(editing!==null)return;const sale=saleType($("product").value);if(sale&&!$("dno").value)$("dno").value=docketNext();if(!sale)$("dno").value=""}
 $("product").addEventListener("input",syncDno);$("product").addEventListener("change",syncDno);
