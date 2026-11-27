@@ -50,6 +50,9 @@ canvas.pad{width:100%;height:120px;background:#fff;border:1px solid var(--bd);bo
 #prevbody{padding:12px;zoom:.75}
 #prevbody .sheet{background:#fff;color:#000;box-shadow:0 1px 6px #0004;margin-bottom:16px;padding:10mm}
 #print{display:none}
+label.req{color:#c62828!important;font-weight:700}input.req{border-color:#c62828!important;box-shadow:0 0 0 1px #c62828}.sp.req{border-color:#c62828;box-shadow:0 0 0 1px #c62828}.sp.req .spl{color:#c62828;font-weight:700}.reqnote{color:#c62828;font-size:12px;margin-top:3px}
+.stage{padding:10px 12px;border-radius:8px;background:var(--card);border:1px solid var(--bd);margin:0 0 12px}.stage.ok{border-color:var(--ac);color:var(--ac)}
+tr.open td{background:#fff6e0;color:#000;height:86px}tr.open{cursor:pointer}tr.open:active td{background:#ffe9b0}.badge{display:inline-block;background:#e8a317;color:#000;font-weight:700;font-size:12px;padding:3px 10px;border-radius:10px}.badge.bgreen{background:#2e7d32;color:#fff}.tab.attn{background:#1565c0;border-color:#1565c0;color:#fff}.tab.attn.on{box-shadow:0 0 0 3px #90caf9}.attnnote{display:none;margin:0 0 8px;color:#1565c0;font-weight:700;font-size:13px}.attncard{border-color:#1565c0!important;box-shadow:0 0 0 1px #1565c0}.attncard .attnnote{display:block}.wotag{color:#e8a317;font-weight:700;text-transform:uppercase;font-size:13px;letter-spacing:.3px}.tapnote{font-size:11px;color:#7a4b00;margin-top:4px}.need{font-size:12px;color:#7a4b00;white-space:normal;min-width:160px}
 [hidden]{display:none!important}
 .sps{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
 .sp{display:flex;flex-direction:column;align-items:stretch;text-align:left;padding:8px;gap:6px}
@@ -62,7 +65,7 @@ canvas.pad{width:100%;height:120px;background:#fff;border:1px solid var(--bd);bo
 #sigc{flex:1;min-height:180px;width:100%;background:#fff;border:2px solid var(--bd);border-radius:10px;touch-action:none;display:block}
 .sxb{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .sxb button{min-height:50px;padding:12px 18px}
-button:disabled{opacity:.45;cursor:default}
+button:disabled{opacity:.45;cursor:default}#complete:disabled{background:#bdbdbd;border-color:#bdbdbd;color:#fff;opacity:1}
 @media print{@page{size:A4;margin:10mm}body>main,#prev,#sigx,#toast{display:none!important}#print{display:block}body{background:#fff}}
 </style>
 <style id="dcss"></style>
@@ -78,22 +81,23 @@ button:disabled{opacity:.45;cursor:default}
 <div class="card"><div class="row"><input id="q" placeholder="Search tickets" style="max-width:260px"><span id="tot" hidden></span>
 <span style="flex:1"></span>
 <button class="sm" id="fromtk">Add names from tickets to directory</button><button class="sm" id="expcsv">Download CSV</button><button class="sm" id="expjson">Backup</button><button class="sm" id="impjson">Restore</button><input type="file" id="impfile" accept=".json" hidden></div></div>
-<div class="card scroll"><table><thead><tr><th>WB no.</th><th>Docket</th><th>Date</th><th>Rego</th><th>Carrier</th><th>Receiver</th><th>Product</th><th class="n">Tare (kg)</th><th class="n">Gross (kg)</th><th class="n">Net (kg)</th><th></th></tr></thead><tbody id="rows"></tbody></table><p class="mu" id="empty">No tickets yet. Use New ticket to add one.</p></div>
+<div class="card scroll"><table><thead><tr><th>WB no.</th><th>Docket</th><th>Status</th><th>Date</th><th>Rego</th><th>Carrier</th><th>Receiver</th><th>Product</th><th class="n">Tare (kg)</th><th class="n">Gross (kg)</th><th class="n">Net (kg)</th><th></th></tr></thead><tbody id="rows"></tbody></table><p class="mu" id="empty">No tickets yet. Use New ticket to add one.</p></div>
 </section>
 
 <section id="v-new" hidden>
 <div class="card"><div class="grid">
 <div><label>Weighbridge no.</label><input id="no"></div>
-<div><label>Docket no. <span class="mu">(sales only)</span></label><input id="dno"></div>
+<div><label>Docket no.</label><input id="dno"></div>
 <div><label>Date and time</label><input id="dt" type="datetime-local"></div>
 <div><label>Vehicle rego</label><input id="rego"></div>
 <div><label>Driver</label><input id="driver"></div>
 <div class="rel"><label>Freight provider</label><input id="carrier" autocomplete="off"></div>
 <div class="rel"><label>Sender (from)</label><input id="sender" autocomplete="off"></div>
-<div class="rel"><label>Receiver (to)</label><input id="receiver" autocomplete="off"></div>
+<div class="rel"><label>Receiver (to)</label><input id="receiver" autocomplete="off"><div id="rcvnote" class="reqnote" hidden>No contact name and phone saved for this receiver yet. <button type="button" class="sm" id="addrc" style="min-height:30px;padding:4px 10px;margin-top:4px">Add contact</button></div></div>
 <div class="rel"><label>Product</label><input id="product" autocomplete="off"></div>
 <div><label>Order / reference no.</label><input id="ref"></div>
 <div><label>Bales loaded</label><input id="bales" type="number" min="0" inputmode="numeric"></div>
+<div style="display:flex;align-items:flex-end"><label style="display:flex;gap:8px;align-items:center;font-size:15px;color:var(--tx);margin:0 0 10px"><input type="checkbox" id="wo" style="width:22px;height:22px"> Weigh only (no delivery docket)</label></div>
 </div></div>
 <div class="card"><p class="mu" style="margin-top:0">Weighing 1 can be the truck and first trailer, weighing 2 the second and third trailers, and so on. Leave unused rows blank.</p>
 <div class="scroll"><div id="w" class="wgrid"></div></div></div>
@@ -101,7 +105,9 @@ button:disabled{opacity:.45;cursor:default}
 <div class="card"><label>Notes</label><textarea id="notes" rows="3"></textarea></div>
 <div class="card"><div class="row" style="margin-bottom:8px"><b>Signatures</b><span class="mu" style="font-size:13px">Sender signs, then the driver or the receiver. Tap a box to sign.</span></div>
 <div class="sps"><button type="button" class="sp" data-step="0"><span class="spl">Sender</span><span class="spv" id="spv0"></span></button><button type="button" class="sp" data-step="1"><span class="spl">Driver</span><span class="spv" id="spv1"></span></button><button type="button" class="sp" data-step="2"><span class="spl">Receiver</span><span class="spv" id="spv2"></span></button></div></div>
-<div class="row"><button class="pri" id="save">Save ticket</button><button id="savep">Save and print</button><button id="saved">Save and download</button><button id="prevf">Print preview</button><button id="clear">Clear form</button></div>
+<p id="stage" class="stage"></p>
+<div class="row" id="btnOpen"><button class="pri" id="complete">Complete</button><button id="later">Save for later</button><button id="prevf">Print preview</button><button class="dg" id="discard">Discard</button></div>
+<div class="row" id="btnDone" hidden><button class="pri" id="save">Save changes</button><button id="prevf2">Print preview</button><button id="cancelEdit">Cancel</button></div>
 </section>
 
 <section id="v-carriers" hidden><div class="card"><p class="mu" style="margin-top:0">Freight providers. Changes save as you type.</p><div id="dl-carriers"></div><button class="pri" data-add="carriers">Add freight provider</button></div></section>
@@ -169,11 +175,12 @@ const QK=KEY+"-pending";let PQ=[];try{PQ=JSON.parse(localStorage.getItem(QK)||"[
 function saveQ(){try{localStorage.setItem(QK,JSON.stringify(PQ))}catch(e){toast("This device is low on storage. Reconnect to the internet soon.")}}
 function enqueue(o){if(o.op==="dir"||o.op==="hdr")PQ=PQ.filter(x=>x.op!==o.op);PQ.push(o);saveQ();flush()}
 let VER=null,flushing=false,online=true;
+PQ.forEach(x=>delete x.busy);
 function status(m,bad){const e=$("sync");if(!e)return;e.textContent=m;e.classList.toggle("bad",!!bad)}
 function okMsg(){return"Synced with the Google Sheet. The tablet and desktop share these tickets."}
 function offMsg(){return"Offline: working on this device."+(PQ.length?" "+PQ.length+" change"+(PQ.length>1?"s":"")+" waiting; "+(PQ.length>1?"they":"it")+" will send automatically.":" Showing the copy saved on this device.")}
 async function flush(){if(flushing||!PQ.length)return;flushing=true;status("Saving to the Google Sheet…");
- try{while(PQ.length){const o=PQ[0];let r;
+ try{while(PQ.length){const o=PQ[0];o.busy=1;let r;
    if(o.op==="save")r=await call("saveTicket",JSON.stringify(o.t),o.old||"");
    else if(o.op==="del")r=await call("deleteTicket",o.no);
    else if(o.op==="dir")r=await call("saveDir",JSON.stringify(o.dir));
@@ -181,15 +188,14 @@ async function flush(){if(flushing||!PQ.length)return;flushing=true;status("Savi
    else if(o.op==="mail"){try{r=await sendDocketEmail(o.no)}catch(e){if(!e.server)throw e;
      // Google refused the email (e.g. permission not given yet): report it and carry on, so tickets keep syncing
      r=null;mailErr("Email for ticket "+o.no+" was not sent: "+e.message)}}
-   PQ.shift();saveQ();
+   {const k=PQ.indexOf(o);if(k>-1)PQ.splice(k,1)}saveQ();render();
    if(r&&r.error)toast(r.error);
    if(r&&r.dno){const t=S.tickets.find(x=>x.no===(r.renamed||o.t.no)||x.no===o.t.no);if(t)t.dno=r.dno;toast("Docket number "+o.t.dno+" was already used on the other device, so this ticket got docket "+r.dno+".")}
    if(r&&r.renamed){PQ.forEach(x=>{if(x.op==="mail"&&x.no===o.t.no)x.no=r.renamed});saveQ();const t=S.tickets.find(x=>x.no===o.t.no);if(t)t.no=r.renamed;SIGS[r.renamed]=SIGS[o.t.no];toast("Ticket number "+o.t.no+" was already used on the other device, so this ticket was saved as "+r.renamed+".")}
   }
   online=true;status(okMsg());pull(true)}
- catch(e){online=false;status(offMsg(),true)}finally{flushing=false}}
-const putTicket=(t,old)=>{SIGS[t.no]={sigO:t.sigO||"",sigD:t.sigD||"",sigR:t.sigR||""};saveSigs();t._full=1;persist();enqueue({op:"save",t:JSON.parse(JSON.stringify(t)),old:old||""});
- if(!old&&[S.hdr.mail1,S.hdr.mail2,S.hdr.mail3].some(x=>x&&x.includes("@")))enqueue({op:"mail",no:t.no})};
+ catch(e){PQ.forEach(x=>delete x.busy);online=false;status(offMsg(),true)}finally{flushing=false}}
+const putTicket=(t,old)=>{SIGS[t.no]={sigO:t.sigO||"",sigD:t.sigD||"",sigR:t.sigR||""};saveSigs();t._full=1;persist();PQ=PQ.filter(x=>x.busy||!(x.op==="save"&&x.t.no===t.no&&x.old===(old||"")&&old));saveQ();enqueue({op:"save",t:JSON.parse(JSON.stringify(t)),old:old||""})};
 const delTicket=no=>{persist();enqueue({op:"del",no})};
 const putDir=()=>{persist();enqueue({op:"dir",dir:JSON.parse(JSON.stringify(S.dir))})};
 const putHdr=()=>{persist();enqueue({op:"hdr",hdr:{...S.hdr}})};
@@ -198,10 +204,16 @@ async function withSigs(t){if(!t)return t;if(t._full)return t;
  if(SIGS[t.no])return Object.assign(t,SIGS[t.no],{_full:1});
  try{const s=JSON.parse(await call("getSigs",t.no));SIGS[t.no]=s;saveSigs();return Object.assign(t,s,{_full:1})}
  catch(e){toast("Could not load the signatures (no connection). The docket will show without them.");return t}}
-function applyRemote(d){
+function applyRemote(d){const busy=!$("sigx").hidden||(document.activeElement&&$("v-new").contains(document.activeElement)&&/INPUT|TEXTAREA/.test(document.activeElement.tagName));
+ const was=editing!==null&&!$("v-new").hidden&&curStatus==="open"&&!dirty&&!busy?editing:null;
  S.tickets=d.tickets.map(norm).map(t=>SIGS[t.no]?Object.assign(t,SIGS[t.no],{_full:1}):t);
  S.dir=normDir(d.dir);S.hdr={...S.hdr,...d.hdr};persist();render();renderDirs();fillHdr();
- if(editing===null&&!$("v-new").hidden&&S.tickets.some(t=>t.no===$("no").value)){const n=Math.max(num(S.hdr.next),...S.tickets.map(t=>(parseInt(t.no,10)||0)+1));$("no").value=n;toast("Ticket number changed to "+n+" because the other device just used the old one.")}}
+ if(editing===null&&!$("v-new").hidden&&S.tickets.some(t=>t.no===$("no").value)){$("no").value=wbNext()}
+ if(was){const t=S.tickets.find(x=>x.no===was);if(!t){toast("Ticket "+was+" was discarded on another device.");done();return}
+  if(t.status!=="open"){toast("Ticket "+was+" was completed on another device.");done();return}
+  if(canon(t)!==lastLoaded){const here=readForm(),keep={...SIG},m={...t,w:t.w.map((x,i)=>({t:has(x.t)?x.t:here.w[i].t,g:has(x.g)?x.g:here.w[i].g}))};
+   FIELDS.forEach(f=>{if(!String(m[f]||"").trim()&&String(here[f]||"").trim())m[f]=here[f]});
+   loadTicket(m).then(()=>{SIG={o:SIG.o||keep.o,d:SIG.d||keep.d,r:SIG.r||keep.r,pickup:SIG.pickup||keep.pickup};renderSigs();showStage()});toast("Ticket "+was+" was updated on another device.")}}}
 let firstPull=true;
 async function pull(force){if(flushing||PQ.length)return;
  try{const v=await call("getVersion");if(!force&&v===VER){if(!online){online=true;status(okMsg())}return}
@@ -222,13 +234,21 @@ const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&g
 const num=v=>{const n=parseFloat(v);return isNaN(n)?0:n};
 const has=v=>v!==""&&v!=null;
 const fmt=n=>Math.round(n).toLocaleString("en-AU");
-function tot(w){let t=0,g=0;w.forEach(x=>{if(has(x.t)&&has(x.g)&&num(x.g)>=num(x.t)){t+=num(x.t);g+=num(x.g)}});return{t,g,n:g-t}}
+function tot(w,wo){let t=0,g=0;if(wo){w.forEach(x=>{if(has(x.t))t+=num(x.t);if(has(x.g))g+=num(x.g)});return{t,g,n:0}}
+ w.forEach(x=>{if(has(x.t)&&has(x.g)&&num(x.g)>=num(x.t)){t+=num(x.t);g+=num(x.g)}});return{t,g,n:g-t}}
 function dl(name,text,type){try{const u=URL.createObjectURL(text instanceof Blob?text:new Blob([text],{type:type||"text/plain"}));const l=document.createElement("a");l.href=u;l.download=name;document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),5000)}catch(e){toast("Could not save the file.")}}
 
 // tabs
 const TABS=[["tickets","Tickets"],["new","New ticket"],["carriers","Freight providers"],["senders","Senders"],["receivers","Receivers"],["products","Products"],["hdr","Business info"]];
 function show(t){TABS.forEach(([k])=>{$("v-"+k).hidden=k!==t});[...$("nav").children].forEach((b,i)=>b.classList.toggle("on",TABS[i][0]===t));if(t==="new"&&!editing&&!$("no").value)resetForm()}
-TABS.forEach(([k,l])=>{const b=document.createElement("button");b.className="tab";b.textContent=l;b.onclick=()=>show(k);$("nav").appendChild(b)});
+TABS.forEach(([k,l])=>{const b=document.createElement("button");b.className="tab";b.textContent=l;b.dataset.tab=k;b.onclick=()=>show(k);$("nav").appendChild(b)});
+// freight providers still missing a contact name and phone: the tab goes blue until every one has at least one
+const noContact=e=>!!String(e.name||"").trim()&&!((e.c1n&&e.c1p)||(e.c2n&&e.c2p));
+// freight providers and receivers still missing a contact name and phone: their tab goes blue until every one has at least one
+function updateAttn(){[["carriers","freight provider"],["receivers","receiver"]].forEach(([k,word])=>{
+ const n=S.dir[k].filter(noContact).length,b=document.querySelector('#nav [data-tab="'+k+'"]');if(!b)return;
+ b.classList.toggle("attn",n>0);b.title=n?n+" "+word+(n>1?"s need":" needs")+" a contact name and phone":"";
+ document.querySelectorAll('#dl-'+k+' .card').forEach((c,i)=>{const e=S.dir[k][i];c.classList.toggle("attncard",!!e&&noContact(e))})})}
 
 // weighings (tare before gross)
 const WL=["Weighing 1 (truck + 1st trailer)","Weighing 2 (2nd + 3rd trailers)","Weighing 3","Weighing 4"];
@@ -237,8 +257,8 @@ const WL=["Weighing 1 (truck + 1st trailer)","Weighing 2 (2nd + 3rd trailers)","
  $("w").innerHTML=`<div class="wh">Weighing</div>${WL.map(l=>`<div class="wc">${l}</div>`).join("")}<div class="wh">Tare (kg)</div>${N.map(n=>inp("t",n)).join("")}<div class="wh">Gross (kg)</div>${N.map(n=>inp("g",n)).join("")}<div class="wh n">Net (kg)</div>${N.map(n=>`<div class="wc n" id="n${n}">0</div>`).join("")}`;
  N.forEach(n=>["t","g"].forEach(p=>$(p+n).oninput=calc))}
 function formW(){return[1,2,3,4].map(i=>({t:$("t"+i).value,g:$("g"+i).value}))}
-function calc(){const w=formW();w.forEach((x,i)=>{const c=$("n"+(i+1));if(has(x.t)&&has(x.g)){const n=num(x.g)-num(x.t);c.textContent=n<0?"check":fmt(n);c.classList.toggle("bad",n<0)}else{c.textContent="0";c.classList.remove("bad")}});
- const T=tot(w);$("ttare").textContent=fmt(T.t)+" kg";$("tgross").textContent=fmt(T.g)+" kg";$("nkg").textContent=fmt(T.n)+" kg";const b=num($("bales").value);$("avgb").textContent=b>0&&T.n>0?"AVG BALE "+(T.n/b).toFixed(1)+" kg":""}
+function calc(){const w=formW(),wo=$("wo").checked;w.forEach((x,i)=>{const c=$("n"+(i+1));if(!wo&&has(x.t)&&has(x.g)){const n=num(x.g)-num(x.t);c.textContent=n<0?"check":fmt(n);c.classList.toggle("bad",n<0)}else{c.textContent="0";c.classList.remove("bad")}});
+ const T=tot(w,wo);$("ttare").textContent=fmt(T.t)+" kg";$("tgross").textContent=fmt(T.g)+" kg";$("nkg").textContent=fmt(T.n)+" kg";const b=num($("bales").value);$("avgb").textContent=b>0&&T.n>0?"AVG BALE "+(T.n/b).toFixed(1)+" kg":""}
 
 // signatures: sender, then driver (or customer pickup), then receiver
 let SIG={o:"",d:"",r:"",pickup:false};
@@ -263,9 +283,9 @@ C.onpointermove=e=>{if(!down)return;const p=pt(e);X.beginPath();X.moveTo(last[0]
 C.onpointerup=C.onpointercancel=()=>{down=false};
 function btns(){$("sxback").hidden=step===0;$("sxpick").hidden=step!==1;$("sxskip").hidden=!(step===2&&SIG.d&&!SIG.pickup);$("sxnext").textContent=step===2?"Complete":"Next";$("sxnext").disabled=!drawn}
 function loadStep(){const[t,h]=STEPS[step];$("sign").textContent="Step "+(step+1)+" of 3";$("sigt").textContent=t;$("sigh").textContent=h;sizePad();clearPad();drawSaved(SIG[SK[step]]);btns()}
-function keep(){const k=SK[step];SIG[k]=exportSig();if(step===1&&SIG.d)SIG.pickup=false}
+function keep(){const k=SK[step];SIG[k]=exportSig();if(step===1&&SIG.d)SIG.pickup=false;dirty=true}
 function openSig(i){if(i>0&&!SIG.o)i=0;if(i===2&&!SIG.d&&!SIG.pickup)i=1;step=i;$("sigx").hidden=false;document.body.style.overflow="hidden";requestAnimationFrame(loadStep)}
-function closeSig(){$("sigx").hidden=true;document.body.style.overflow="";renderSigs()}
+function closeSig(){$("sigx").hidden=true;document.body.style.overflow="";renderSigs();scheduleAuto()}
 $("sxclose").onclick=()=>{if(drawn)keep();closeSig()};
 $("sxclear").onclick=()=>{clearPad();SIG[SK[step]]="";if(step===1)SIG.pickup=false};
 $("sxback").onclick=()=>{if(drawn)keep();step--;loadStep()};
@@ -275,17 +295,17 @@ $("sxnext").onclick=()=>{if(!drawn)return;keep();if(step<2){step++;loadStep()}el
 addEventListener("resize",()=>{if($("sigx").hidden)return;const u=exportSig();sizePad();X.clearRect(0,0,C.width,C.height);drawn=false;box=null;drawSaved(u);btns()});
 
 // name fields: type, Tab or tap accepts suggestion
-function combo(id,kind){const inp=$(id),box=document.createElement("div");box.className="sug";box.hidden=true;inp.parentNode.appendChild(box);let items=[],idx=0;
+function combo(id,kind){const inp=$(id),box=document.createElement("div");box.className="sug";box.hidden=true;inp.parentNode.appendChild(box);let items=[],idx=-1;
  const draw=()=>{box.innerHTML=items.map((n,i)=>`<div class="${i===idx?"on":""}" data-i="${i}">${esc(n)}</div>`).join("");box.hidden=!items.length};
- const refresh=()=>{const v=inp.value.trim().toLowerCase();items=S.dir[kind].map(e=>e.name).filter(n=>n&&n.toLowerCase()!==v&&(!v||n.toLowerCase().includes(v))).sort((a,b)=>(b.toLowerCase().startsWith(v)-a.toLowerCase().startsWith(v))||a.localeCompare(b)).slice(0,8);idx=0;draw()};
+ const refresh=()=>{const v=inp.value.trim().toLowerCase();items=S.dir[kind].map(e=>e.name).filter(n=>n&&n.toLowerCase()!==v&&(!v||n.toLowerCase().includes(v))).sort((a,b)=>(b.toLowerCase().startsWith(v)-a.toLowerCase().startsWith(v))||a.localeCompare(b)).slice(0,8);idx=-1;draw()};
  const pick=n=>{inp.value=n;box.hidden=true;inp.dispatchEvent(new Event("change"))};
  inp.oninput=refresh;inp.onfocus=refresh;inp.onblur=()=>setTimeout(()=>box.hidden=true,150);
  box.onpointerdown=e=>{const d=e.target.closest("[data-i]");if(d){e.preventDefault();pick(items[d.dataset.i])}};
  inp.onkeydown=e=>{if(box.hidden)return;
-  if(e.key==="Tab"){if(items[idx])pick(items[idx])}
+  if(e.key==="Tab"){if(idx>=0&&items[idx])pick(items[idx]);else box.hidden=true}
   else if(e.key==="ArrowDown"){e.preventDefault();idx=Math.min(idx+1,items.length-1);draw()}
-  else if(e.key==="ArrowUp"){e.preventDefault();idx=Math.max(idx-1,0);draw()}
-  else if(e.key==="Enter"){if(items[idx]){e.preventDefault();pick(items[idx])}}
+  else if(e.key==="ArrowUp"){e.preventDefault();idx=Math.max(idx-1,-1);draw()}
+  else if(e.key==="Enter"){if(idx>=0&&items[idx]){e.preventDefault();pick(items[idx])}}
   else if(e.key==="Escape")box.hidden=true}}
 [["carrier","carriers"],["sender","senders"],["receiver","receivers"],["product","products"]].forEach(a=>combo(a[0],a[1]));
 
@@ -293,34 +313,99 @@ function combo(id,kind){const inp=$(id),box=document.createElement("div");box.cl
 const FIELDS=["no","dno","dt","rego","driver","carrier","sender","receiver","product","ref","bales","notes"];
 let editing=null;
 function nowLocal(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)}
-function resetForm(){editing=null;lockNos(false);FIELDS.forEach(f=>$(f).value="");for(let i=1;i<=4;i++){$("t"+i).value="";$("g"+i).value=""}SIG={o:"",d:"",r:"",pickup:false};renderSigs();$("no").value=S.hdr.next||1;$("dt").value=nowLocal();calc();syncDno()}
+function resetForm(){editing=null;curStatus="open";dirty=false;clearTimeout(autoT);$("wo").checked=false;FIELDS.forEach(f=>$(f).value="");for(let i=1;i<=4;i++){$("t"+i).value="";$("g"+i).value=""}SIG={o:"",d:"",r:"",pickup:false};renderSigs();$("no").value=wbNext();$("dno").value="";$("dt").value=nowLocal();calc();syncDno();lockNos(true);setMode()}
 // once a ticket is saved its weighbridge and docket numbers are fixed
-function lockNos(on,t){["no","dno"].forEach(id=>{$(id).readOnly=on;$(id).style.opacity=on?.6:1});$("dno").placeholder=on&&t&&!t.dno&&saleType(t.product)?"Same as weighbridge no.":""}
+function lockNos(on,t){["no","dno"].forEach(id=>{$(id).readOnly=true;$(id).style.opacity=.7});$("dno").placeholder=t&&t.status!=="open"&&!t.dno&&saleType(t.product)?"Same as weighbridge no.":(curStatus==="open"?"Given when a product is chosen":"")}
 // docket numbers: only for sales (Bales-Cotton Seed or Bulk-Cotton Seed), with their own counter
 // any product mentioning cotton and bale(s) is a bale sale; cotton and bulk is a bulk sale (spelling and word order don't matter)
 const saleType=p=>{const k=String(p||"").toLowerCase();return !k.includes("cotton")?"":/bale/.test(k)?"Bale Sales":/bulk/.test(k)?"Bulk Sales":""};
 function docketNext(){return Math.max(num(S.hdr.dnext)||num(S.hdr.next)||1,...S.tickets.filter(t=>t.no!==editing).map(t=>(parseInt(t.dno,10)||0)+1))}
-function syncDno(){if(editing!==null)return;const sale=saleType($("product").value);if(sale&&!$("dno").value)$("dno").value=docketNext();if(!sale)$("dno").value=""}
+function syncDno(){if(curStatus!=="open")return;const need=!!$("product").value.trim()&&!$("wo").checked;if(need&&!$("dno").value)$("dno").value=docketNext();if(!need)$("dno").value="";showStage()}
 $("product").addEventListener("input",syncDno);$("product").addEventListener("change",syncDno);
-function readForm(){const o={};FIELDS.forEach(f=>o[f]=$(f).value);o.w=formW();o.sigO=SIG.o;o.sigD=SIG.d;o.sigR=SIG.r;o.pickup=SIG.pickup;return o}
-async function offerNew(o){const miss=[];[["carrier","carriers","freight provider"],["sender","senders","sender"],["receiver","receivers","receiver"],["product","products","product"]].forEach(([f,k,l])=>{const v=(o[f]||"").trim();if(v&&!S.dir[k].some(e=>e.name.toLowerCase()===v.toLowerCase()))miss.push([k,l,v])});for(const [k,l,v] of miss){if(await ask('"'+v+'" is not in the '+l+' directory. Save it? You can add details later.',"Save to directory","Not now")){S.dir[k].push({name:v});putDir();renderDir(k)}}}
-async function saveTicket(){const o=readForm();if(!o.no){toast("Enter a ticket number.");return null}
- if(editing!==null){const orig=S.tickets.find(t=>t.no===editing);o.no=editing;o.dno=orig?(orig.dno||""):o.dno}   // numbers never change on an edit
- else if(saleType(o.product)){if(!o.dno)o.dno=String(docketNext())}else o.dno="";
- if(o.dno&&S.tickets.some(t=>t.dno===o.dno&&t.no!==editing)){toast("Docket number "+o.dno+" is already used.");return null}
- if(!sigOk(o)){toast(o.sigO?"The driver or the receiver needs to sign.":"The sender needs to sign.");openSig(o.sigO?1:0);return null}
- if(S.tickets.some(t=>t.no===o.no&&t.no!==editing)){toast("Ticket number "+o.no+" already exists.");return null}
+function readForm(){const o={};FIELDS.forEach(f=>o[f]=$(f).value);o.w=formW();o.sigO=SIG.o;o.sigD=SIG.d;o.sigR=SIG.r;o.pickup=SIG.pickup;o.wo=$("wo").checked;o.status=curStatus;return o}
+async function offerNew(o){const miss=[];[["carrier","carriers","freight provider"],["sender","senders","sender"],["receiver","receivers","receiver"],["product","products","product"]].forEach(([f,k,l])=>{const v=(o[f]||"").trim();if(v&&!S.dir[k].some(e=>e.name.toLowerCase()===v.toLowerCase()))miss.push([k,l,v])});for(const [k,l,v] of miss){if(await ask('"'+v+'" is not in the '+l+' directory. Save it? You can add details later.',"Save to directory","Not now")){S.dir[k].push({name:v});putDir();renderDir(k);updateAttn()}}}
+// ---- open tickets: numbers are given when the ticket is opened; Complete checks everything before emailing ----
+let curStatus="open",dirty=false,autoT=null,lastLoaded="";
+const pendingFor=no=>PQ.some(x=>(x.op==="save"&&x.t&&x.t.no===no)||(x.op==="mail"&&x.no===no));
+const synced=t=>!pendingFor(t.no)&&(!!t.emailed||!t._mailq);
+const hasMail=()=>[S.hdr.mail1,S.hdr.mail2,S.hdr.mail3].some(x=>x&&x.includes("@"));
+function wbNext(){return Math.max(num(S.hdr.next)||1,...S.tickets.filter(t=>t.no!==editing).map(t=>(parseInt(t.no,10)||0)+1))}
+function rcvHasContact(name){const e=S.dir.receivers.find(x=>(x.name||"").toLowerCase()===String(name||"").trim().toLowerCase());return!!e&&!!((e.c1n&&e.c1p)||(e.c2n&&e.c2p))}
+// what is still needed before a ticket can be completed: [field key, wording]
+function missingKeys(o){const m=[],w=o.w||[],add=(k,l)=>m.push([k,l]);let pairs=0,any=0;
+ w.forEach((x,i)=>{const a=has(x.t),b=has(x.g);if(a||b)any++;if(a&&b)pairs++;if(!o.wo){if(a&&!b)add("g"+(i+1),"gross weight "+(i+1));if(b&&!a)add("t"+(i+1),"tare weight "+(i+1))}});
+ if(o.wo){if(!any)add("t1","a tare or gross weight")}else if(!pairs&&!m.length)add(w.some(x=>has(x.t))?"g1":"t1",w.some(x=>has(x.t))?"gross weight":"tare and gross weights");
+ if(!String(o.sender||"").trim())add("sender","sender");
+ if(!o.wo&&!String(o.carrier||"").trim())add("carrier","freight provider");
+ if(!String(o.receiver||"").trim())add("receiver","receiver");else if(!o.wo&&!rcvHasContact(o.receiver))add("rcvc","receiver contact name and phone (Receivers tab)");
+ if(o.wo)return m;
+ if(!String(o.product||"").trim())add("product","product");
+ if(saleType(o.product)==="Bale Sales"&&!(num(o.bales)>0))add("bales","number of bales");
+ if(!o.sigO)add("sp0","sender signature");
+ if(!(o.sigD||o.sigR))add(o.pickup?"sp2":"sp1",o.pickup?"receiver signature":"driver or receiver signature");
+ return m}
+const missing=o=>missingKeys(o).map(x=>x[1]);
+function hasInput(o){return["rego","driver","carrier","sender","receiver","product","ref","bales","notes"].some(f=>String(o[f]||"").trim())||o.w.some(x=>has(x.t)||has(x.g))||o.sigO||o.sigD||o.sigR}
+function setMode(){const done=curStatus==="done";$("btnOpen").hidden=done;$("btnDone").hidden=!done;$("discard").hidden=editing===null;$("wo").disabled=done;showStage()}
+function showStage(){const o=readForm(),el=$("stage");$("complete").disabled=curStatus==="open"&&missingKeys(o).length>0;
+ document.querySelectorAll("#v-new .req").forEach(e=>e.classList.remove("req"));$("rcvnote").hidden=true;
+ if(curStatus==="done"){el.textContent="Completed ticket. Weighbridge and docket numbers are fixed.";el.hidden=false;return}
+ el.hidden=true;
+ missingKeys(o).forEach(([k])=>{if(k==="rcvc"){$("rcvnote").hidden=false;k="receiver"}
+  if(/^sp\d$/.test(k)){const b=document.querySelector('.sp[data-step="'+k[2]+'"]');if(b)b.classList.add("req");return}
+  const f=$(k);if(!f)return;if(/^[tg]\d$/.test(k)){f.classList.add("req");return}const lab=f.parentNode.querySelector("label");if(lab)lab.classList.add("req")})}
+function scheduleAuto(){showStage();if(curStatus!=="open")return;dirty=true;clearTimeout(autoT);autoT=setTimeout(()=>storeOpen(),2500)}
+// save the ticket as Open (no checks); the first save gives it its weighbridge number for good
+function storeOpen(force){clearTimeout(autoT);const o=readForm();if(curStatus!=="open")return null;if(editing===null&&!hasInput(o)&&!force)return null;
+ o.status="open";const old=editing;
+ if(editing===null){if(S.tickets.some(t=>t.no===o.no))o.no=String(wbNext());S.tickets.push(o);editing=o.no;$("no").value=o.no}
+ else{o.no=editing;const i=S.tickets.findIndex(t=>t.no===editing);if(i>-1)S.tickets[i]=o;else S.tickets.push(o)}
+ if(o.dno&&S.tickets.some(t=>t.dno===o.dno&&t.no!==o.no)){o.dno=String(docketNext());$("dno").value=o.dno}
+ const n=parseInt(o.no,10),dn=parseInt(o.dno,10);let hc=false;if(!isNaN(n)&&n>=num(S.hdr.next)){S.hdr.next=n+1;hc=true}if(!isNaN(dn)&&dn>=num(S.hdr.dnext||S.hdr.next)){S.hdr.dnext=dn+1;hc=true}if(hc){putHdr();fillHdr()}
+ putTicket(o,old);dirty=false;lastLoaded=canon(o);$("discard").hidden=false;render();return o}
+const stripT=t=>{const{sigO,sigD,sigR,_full,...r}=t;return r};
+const canon=t=>{const o={};FIELDS.forEach(f=>o[f]=f==="dt"?String(t[f]||"").replace(" ","T").slice(0,16):String(t[f]==null?"":t[f]).trim());o.w=(t.w||[]).map(x=>[String(x.t==null?"":x.t),String(x.g==null?"":x.g)]);o.wo=!!t.wo;o.pickup=!!t.pickup;return JSON.stringify(o)};
+async function saveTicket(mode){clearTimeout(autoT);const o=readForm();
+ if(mode==="complete"){const m=missing(o);if(m.length){toast("Can't complete yet. Still needed: "+m.join(", "));const sg=m.find(x=>x.includes("signature"));if(sg&&m.length===1)openSig(o.sigO?1:0);return null}}
+ if(mode==="edit"){const orig=S.tickets.find(t=>t.no===editing);o.no=editing;o.dno=orig?(orig.dno||""):o.dno;o.wo=orig?!!orig.wo:o.wo}
+ else{if(editing!==null)o.no=editing;else if(S.tickets.some(t=>t.no===o.no))o.no=String(wbNext());
+  if(!o.wo&&String(o.product||"").trim()){if(!o.dno||S.tickets.some(t=>t.dno===o.dno&&t.no!==o.no))o.dno=String(docketNext())}else o.dno=""}
+ o.status="done";
  await offerNew(o);
- const old=editing;if(editing!==null){const i=S.tickets.findIndex(t=>t.no===editing);if(i>-1)S.tickets[i]=o;else S.tickets.push(o)}
- else S.tickets.push(o);
- const n=editing===null?parseInt(o.no,10):NaN,dn=editing===null?parseInt(o.dno,10):NaN;let hc=false;if(!isNaN(n)&&n>=num(S.hdr.next)){S.hdr.next=n+1;hc=true}if(!isNaN(dn)&&dn>=num(S.hdr.dnext||S.hdr.next)){S.hdr.dnext=dn+1;hc=true}if(hc){putHdr();fillHdr()}
- putTicket(o,old);render();return o}
+ const old=editing;if(editing!==null){const i=S.tickets.findIndex(t=>t.no===editing);if(i>-1)S.tickets[i]=o;else S.tickets.push(o)}else S.tickets.push(o);
+ if(mode!=="edit"){const n=parseInt(o.no,10),dn=parseInt(o.dno,10);let hc=false;if(!isNaN(n)&&n>=num(S.hdr.next)){S.hdr.next=n+1;hc=true}if(!isNaN(dn)&&dn>=num(S.hdr.dnext||S.hdr.next)){S.hdr.dnext=dn+1;hc=true}if(hc){putHdr();fillHdr()}}
+ putTicket(o,old);dirty=false;render();return o}
+async function loadTicket(t){clearTimeout(autoT);
+ // open tickets: get the latest signatures from the sheet, but keep this device's copy if there's no connection
+ const cached=SIGS[t.no]?{...SIGS[t.no]}:null;
+ if(t.status==="open"&&online){delete SIGS[t.no];t._full=0}
+ await withSigs(t);if(cached&&!(t.sigO||t.sigD||t.sigR)){Object.assign(t,cached);SIGS[t.no]=cached}
+ FIELDS.forEach(f=>$(f).value=t[f]||"");$("wo").checked=!!t.wo;t.w.forEach((x,i)=>{$("t"+(i+1)).value=x.t;$("g"+(i+1)).value=x.g});
+ SIG={o:t.sigO||"",d:t.sigD||"",r:t.sigR||"",pickup:!!t.pickup};renderSigs();editing=t.no;curStatus=t.status==="open"?"open":"done";dirty=false;lastLoaded=canon(t);
+ lockNos(true,t);calc();show("new");setMode()}
 const done=()=>{resetForm();show("tickets")};
-$("save").onclick=async()=>{if(await saveTicket())done()};
-$("savep").onclick=async()=>{const o=await saveTicket();if(o){done();preview(o)}};
-$("saved").onclick=async()=>{if(!anySel())return;const o=await saveTicket();if(o){download(o);done()}};
+$("complete").onclick=async()=>{const o=await saveTicket("complete");if(o){if(hasMail()){o._mailq=1;enqueue({op:"mail",no:o.no})}done();preview(o)}};
+$("later").onclick=()=>{storeOpen();toast(editing!==null?"Ticket "+editing+" saved for later.":"Nothing entered yet.");done()};
+$("discard").onclick=async()=>{if(editing===null){done();return}if(await ask("Discard open ticket "+editing+"? Everything entered on it will be deleted.","Discard","Keep it")){const no=editing;S.tickets=S.tickets.filter(t=>t.no!==no);delTicket(no);toast("Ticket "+no+" discarded.");done()}};
+$("cancelEdit").onclick=done;
+// add a receiver contact without leaving the ticket (saved to the Receivers directory)
+$("addrc").onclick=()=>{const name=$("receiver").value.trim();if(!name)return;
+ const o=document.createElement("div");o.style.cssText="position:fixed;inset:0;background:#0007;z-index:60;display:flex;align-items:center;justify-content:center;padding:16px";
+ o.innerHTML='<div class="card" style="max-width:420px;width:100%;margin:0"><h2 style="margin-top:0"></h2><div class="grid2"><div><label>Contact name</label><input id="rcn"></div><div><label>Phone</label><input id="rcp" type="tel"></div></div><div class="row" style="margin-top:12px"><button class="pri" id="rcok">Save contact</button><button id="rcx">Cancel</button></div></div>';
+ o.querySelector("h2").textContent="Contact for "+name;document.body.appendChild(o);o.querySelector("#rcn").focus();
+ o.querySelector("#rcx").onclick=()=>o.remove();
+ o.querySelector("#rcok").onclick=()=>{const n=o.querySelector("#rcn").value.trim(),ph=o.querySelector("#rcp").value.trim();if(!n||!ph){toast("Enter a name and a phone number.");return}
+  let e=S.dir.receivers.find(x=>(x.name||"").toLowerCase()===name.toLowerCase());if(!e){e={name};S.dir.receivers.push(e)}
+  if(!(e.c1n&&e.c1p)){e.c1n=n;e.c1p=ph}else{e.c2n=n;e.c2p=ph}putDir();renderDirs();updateAttn();o.remove();toast("Contact saved for "+name+".");showStage()}};
+$("prevf2").onclick=()=>preview(readForm());
+["input","change"].forEach(ev=>$("v-new").addEventListener(ev,e=>{if(e.target&&(e.target.id==="no"||e.target.id==="dno"))return;scheduleAuto()}));
+$("wo").addEventListener("change",()=>{syncDno();calc()});
+$("save").onclick=async()=>{const o=await saveTicket("edit");if(!o)return;done();
+ if(hasMail()&&await ask("Email the updated ticket "+o.no+" to the office?","Send update","Not now")){o._mailq=1;enqueue({op:"mail",no:o.no});render()}};
+
+
 $("prevf").onclick=()=>preview(readForm());
-$("clear").onclick=resetForm;
+
 $("w").oninput=calc;$("bales").oninput=calc;
 
 // register
@@ -330,26 +415,27 @@ function sortKey(t){const d=String(t.dt||"").trim();let m=d.match(/^(\d{1,2})\/(
 // show dates as dd/mm/yyyy hh:mm (stored internally as yyyy-mm-ddThh:mm)
 function fmtDt(d){const m=String(d||"").match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);return m?m[3]+"/"+m[2]+"/"+m[1]+" "+m[4]+":"+m[5]:String(d||"")}
 function render(){const q=$("q").value.toLowerCase();
- const list=[...S.tickets].sort((a,b)=>sortKey(b).localeCompare(sortKey(a))||(parseInt(b.no,10)||0)-(parseInt(a.no,10)||0)).filter(t=>!q||JSON.stringify({...t,sigO:0,sigD:0,sigR:0}).toLowerCase().includes(q));
- $("rows").innerHTML=list.map(t=>{const T=tot(t.w),n=esc(t.no);return`<tr><td>${n}</td><td>${esc(t.dno||(saleType(t.product)?t.no:""))}</td><td>${esc(fmtDt(t.dt))}</td><td>${esc(t.rego)}</td><td>${esc(t.carrier)}</td><td>${esc(t.receiver)}</td><td>${esc(t.product)}</td><td class="n">${fmt(T.t)}</td><td class="n">${fmt(T.g)}</td><td class="n">${fmt(T.n)}</td><td><button class="sm" data-a="p" data-n="${n}">Print</button> <button class="sm" data-a="m" data-n="${n}">Email</button> <button class="sm" data-a="e" data-n="${n}">Edit</button> <button class="sm dg" data-a="d" data-n="${n}">Delete</button></td></tr>`}).join("");
- $("empty").hidden=list.length>0;const tn=list.reduce((a,t)=>a+tot(t.w).n,0);$("tot").textContent=list.length+" tickets, "+fmt(tn)+" kg net";
+ const list=[...S.tickets].sort((a,b)=>(b.status==="open")-(a.status==="open")||sortKey(b).localeCompare(sortKey(a))||(parseInt(b.no,10)||0)-(parseInt(a.no,10)||0)).filter(t=>!q||JSON.stringify({...t,sigO:0,sigD:0,sigR:0}).toLowerCase().includes(q));
+ $("rows").innerHTML=list.map(t=>{const T=tot(t.w,t.wo),n=esc(t.no),sumT=t.w.reduce((a,x)=>a+(has(x.t)?num(x.t):0),0),sumG=t.w.reduce((a,x)=>a+(has(x.g)?num(x.g):0),0);const op=t.status==="open",ok=!op&&synced(t);return`<tr class="${op?"open":""}" ${op?`data-open="${n}"`:""}><td>${n}</td><td>${esc(t.dno||(!op&&saleType(t.product)?t.no:""))}</td><td>${op?`<span class="badge">OPEN</span><div class="tapnote">Tap to continue</div>`:`<span class="badge ${ok?"bgreen":""}" title="${ok?"Saved to the Google Sheet and emailed":"Still sending: keep the tablet connected"}">COMPLETE</span>`}</td><td>${esc(fmtDt(t.dt))}</td><td>${esc(t.rego)}</td><td>${esc(t.carrier)}</td><td>${esc(t.receiver)}</td><td>${t.wo?`<span class="wotag">Weigh only</span>${t.product?`<div class="mu" style="font-size:12px">${esc(t.product)}</div>`:""}`:esc(t.product)}</td><td class="n">${sumT?fmt(sumT):""}</td><td class="n">${sumG?fmt(sumG):""}</td><td class="n">${t.status==="open"?"":fmt(T.n)}</td><td>${op?"":`<button class="sm" data-a="p" data-n="${n}">Print</button> <button class="sm" data-a="m" data-n="${n}">Email</button> <button class="sm" data-a="e" data-n="${n}">Edit</button> <button class="sm dg" data-a="d" data-n="${n}">Delete</button>`}</td></tr>`}).join("");
+ $("empty").hidden=list.length>0;const tn=list.reduce((a,t)=>a+tot(t.w,t.wo).n,0);$("tot").textContent=list.length+" tickets, "+fmt(tn)+" kg net";
  }
-function renderDirs(){["carriers","senders","receivers","products"].forEach(k=>{if(!$("dl-"+k).contains(document.activeElement))renderDir(k)})}
+function renderDirs(){["carriers","senders","receivers","products"].forEach(k=>{if(!$("dl-"+k).contains(document.activeElement))renderDir(k)});updateAttn()}
 function fillHdr(){try{const m=localStorage.getItem(KEY+"-mailerr");if(m){$("mailerr").textContent="Last email problem: "+m;$("mailerr").hidden=false}}catch(e){}if($("v-hdr").contains(document.activeElement))return;$("h-name").value=S.hdr.name||"";$("h-abn").value=S.hdr.abn||"";$("h-addr").value=S.hdr.addr||"";["contact","phone","email","web","mail1","mail2","mail3"].forEach(k=>$("h-"+k).value=S.hdr[k]||"");$("h-next").value=S.hdr.next||1;$("h-dnext").value=S.hdr.dnext||S.hdr.next||1}
 $("q").oninput=render;
-$("rows").onclick=async e=>{const b=e.target.closest("button");if(!b)return;const t=S.tickets.find(x=>x.no===b.dataset.n);if(!t)return;const a=b.dataset.a;
- if("vpxe".includes(a)){if(a==="x"&&!anySel())return;await withSigs(t)}
+$("rows").onclick=async e=>{const b=e.target.closest("button");
+ if(!b){const tr=e.target.closest("tr[data-open]");if(tr){const t=S.tickets.find(x=>x.no===tr.dataset.open);if(t)await loadTicket(t)}return}const t=S.tickets.find(x=>x.no===b.dataset.n);if(!t)return;const a=b.dataset.a;
+ if(a==="p"||a==="m"){await withSigs(t)}
  
  if(a==="p")preview(t);
  if(a==="m"){if(![S.hdr.mail1,S.hdr.mail2,S.hdr.mail3].some(x=>x&&x.includes("@"))){toast("Add an email address in Business info first.");return}
   if(await ask("Email ticket "+t.no+" to the office again?","Send","Cancel")){toast("Sending ticket "+t.no+"…");enqueue({op:"mail",no:t.no})}}
  if(a==="d"&&await ask("Delete ticket "+t.no+"? This cannot be undone.","Delete","Cancel")){S.tickets=S.tickets.filter(x=>x!==t);delTicket(t.no);render()}
- if(a==="e"){FIELDS.forEach(f=>$(f).value=t[f]||"");t.w.forEach((x,i)=>{$("t"+(i+1)).value=x.t;$("g"+(i+1)).value=x.g});SIG={o:t.sigO||"",d:t.sigD||"",r:t.sigR||"",pickup:!!t.pickup};renderSigs();editing=t.no;lockNos(true,t);calc();show("new")}};
+ if(a==="e")await loadTicket(t)};
 
 $("fromtk").onclick=()=>{let n=0;[["carrier","carriers"],["sender","senders"],["receiver","receivers"],["product","products"]].forEach(([f,k])=>S.tickets.forEach(t=>{const v=(t[f]||"").trim();if(v&&!S.dir[k].some(e=>e.name.toLowerCase()===v.toLowerCase())){S.dir[k].push({name:v});n++}}));if(n)putDir();renderDirs();toast(n?n+" names added to the directory.":"No new names found in your tickets.")};
 // export / import
 $("expcsv").onclick=()=>{const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';const h=["No","Date","Rego","Driver","Carrier","Sender","Receiver","Product","Reference","Bales","Tare kg","Gross kg","Net kg","Avg bale kg","Notes"];
- const r=S.tickets.map(t=>{const T=tot(t.w),b=num(t.bales);return[t.no,fmtDt(t.dt),t.rego,t.driver,t.carrier,t.sender,t.receiver,t.product,t.ref,t.bales,T.t,T.g,T.n,b>0?(T.n/b).toFixed(1):"",t.notes].map(q).join(",")});
+ const r=S.tickets.map(t=>{const T=tot(t.w,t.wo),b=num(t.bales);return[t.no,fmtDt(t.dt),t.rego,t.driver,t.carrier,t.sender,t.receiver,t.product,t.ref,t.bales,T.t,T.g,T.n,b>0?(T.n/b).toFixed(1):"",t.notes].map(q).join(",")});
  dl("weighbridge-tickets.csv",[h.map(q).join(","),...r].join("\r\n"),"text/csv")};
 $("expjson").onclick=async()=>{toast("Preparing backup…");for(const t of S.tickets)await withSigs(t);dl("weighbridge-backup.json",JSON.stringify({...S,tickets:S.tickets.map(({_full,...r})=>r)}),"application/json")};
 $("impjson").onclick=()=>$("impfile").click();
@@ -361,8 +447,8 @@ $("impfile").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new Fil
 // directory (editable, saves as you type)
 const LBL={carriers:["Owner or depot manager","Second contact"],senders:["Contact 1","Contact 2"],receivers:["Contact 1","Contact 2"]};
 function renderDir(k){const box=$("dl-"+k);box.innerHTML=S.dir[k].map((e,i)=>{const f=(fld,lab,ph)=>`<div><label>${lab}</label><input data-k="${k}" data-i="${i}" data-f="${fld}" value="${esc(e[fld])}" ${ph||""}></div>`;
- const c=LBL[k];return`<div class="card" style="background:var(--bg)"><div class="grid">${f("name","Name")}${k==="senders"?f("code","Sender Code",'style="text-transform:uppercase"'):""}${c?f("c1n",c[0]+" name")+f("c1p",c[0]+" phone",'type="tel"')+f("c2n",c[1]+" name")+f("c2p",c[1]+" phone",'type="tel"'):""}</div><p style="margin:10px 0 0"><button class="sm dg" data-del="${k}" data-i="${i}">Delete</button></p></div>`}).join("")||'<p class="mu">Nothing here yet.</p>'}
-document.addEventListener("input",e=>{const d=e.target.dataset;if(d&&d.k){S.dir[d.k][d.i][d.f]=e.target.value;putDirSoon()}});
+ const c=LBL[k];return`<div class="card" style="background:var(--bg)">${k==="carriers"||k==="receivers"?'<p class="attnnote">Needs a contact name and phone</p>':""}<div class="grid">${f("name","Name")}${k==="senders"?f("code","Sender Code",'style="text-transform:uppercase"'):""}${c?f("c1n",c[0]+" name")+f("c1p",c[0]+" phone",'type="tel"')+f("c2n",c[1]+" name")+f("c2p",c[1]+" phone",'type="tel"'):""}</div><p style="margin:10px 0 0"><button class="sm dg" data-del="${k}" data-i="${i}">Delete</button></p></div>`}).join("")||'<p class="mu">Nothing here yet.</p>'}
+document.addEventListener("input",e=>{const d=e.target.dataset;if(d&&d.k){S.dir[d.k][d.i][d.f]=e.target.value;putDirSoon();updateAttn()}});
 document.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b)return;
  if(b.dataset.add){S.dir[b.dataset.add].push({name:""});putDir();renderDir(b.dataset.add)}
  if(b.dataset.del){const k=b.dataset.del,i=+b.dataset.i;if(await ask("Delete "+(S.dir[k][i].name||"this entry")+" from the directory? Old tickets are not changed.","Delete","Cancel")){S.dir[k].splice(i,1);putDir();renderDir(k)}}});
@@ -392,9 +478,9 @@ function infoTable(t,extra){return`<table class="dt"><tr><td class="k">Freight p
 function avgTxt(t,T){const b=num(t.bales);return b>0?` <span class="avg">avg ${(T.n/b).toFixed(1)} kg</span>`:""}
 // receiver's contact (name and phone) from the Receivers directory
 function rcvContact(t){const e=S.dir.receivers.find(x=>(x.name||"").toLowerCase()===String(t.receiver||"").trim().toLowerCase());if(!e)return[];return[[e.c1n,e.c1p],[e.c2n,e.c2p]].map(c=>c.filter(Boolean).join("  ")).filter(Boolean)}
-function delivery(t,label){const T=tot(t.w);const r=(k1,v1,k2,v2)=>`<tr><td class="k">${k1}</td><td>${v1}</td><td class="k">${k2}</td><td>${v2}</td></tr>`;
+function delivery(t,label){const T=tot(t.w,t.wo);const r=(k1,v1,k2,v2)=>`<tr><td class="k">${k1}</td><td>${v1}</td><td class="k">${k2}</td><td>${v2}</td></tr>`;
  return`<div class="d">${hdrBlock(t,"DELIVERY DOCKET","")}<table class="dt">${r("Sender",esc(t.sender),"Receiver",esc(t.receiver))}<tr><td class="k">Freight provider</td><td>${esc(t.carrier)}</td><td class="k" rowspan="2">Contact</td><td rowspan="2">${rcvContact(t).map(esc).join("<br>")}</td></tr><tr><td class="k">Vehicle rego</td><td>${esc(t.rego)}</td></tr>${r("Driver",esc(t.driver),"Product",esc(t.product))}</table><table class="dt wt"><tr><td class="k">Bales</td><td>${esc(t.bales)}${avgTxt(t,T)}</td><td class="k">Tare</td><td>${fmt(T.t)} kg</td><td class="k">Gross</td><td>${fmt(T.g)} kg</td><td class="k">NET</td><td class="big">${fmt(T.n)} kg</td></tr></table>${t.notes?`<div style="font-size:10px">Notes: ${esc(t.notes)}</div>`:""}${sigBlock(t)}<div class="cp"><span class="lb">${label}</span></div></div>`}
-function weighbridge(t){const T=tot(t.w);const rows=t.w.map((x,i)=>has(x.t)&&has(x.g)?`<tr><td>Weighing ${i+1}</td><td>${fmt(num(x.t))}</td><td>${fmt(num(x.g))}</td><td>${fmt(num(x.g)-num(x.t))}</td></tr>`:"").join("");
+function weighbridge(t){const T=tot(t.w,t.wo);const rows=t.w.map((x,i)=>has(x.t)||has(x.g)?`<tr><td>Weighing ${i+1}</td><td>${has(x.t)?fmt(num(x.t)):""}</td><td>${has(x.g)?fmt(num(x.g)):""}</td><td>${t.wo?"0":has(x.t)&&has(x.g)?fmt(num(x.g)-num(x.t)):""}</td></tr>`:"").join("");
  return`<div class="d w">${hdrBlock(t,"WEIGHBRIDGE DOCKET","__wb")}${infoTable(t,avgTxt(t,T))}<table class="dt"><tr><th>Weighing</th><th>Tare (kg)</th><th>Gross (kg)</th><th>Net (kg)</th></tr>${rows}<tr><th>Total</th><th>${fmt(T.t)}</th><th>${fmt(T.g)}</th><th class="big">${fmt(T.n)} kg</th></tr></table>${t.notes?`<div style="font-size:10px">Notes: ${esc(t.notes)}</div>`:""}</div>`}
 function anySel(){if(!wbN()&&!dCopies().length){toast("Choose weighbridge docket copies or at least one delivery docket copy.");return false}return true}
 // print choices: weighbridge docket copies (0-3) and which delivery docket copies; each kind fits up to 3 on one A4 page
@@ -404,11 +490,11 @@ const PK=KEY+"-print";
 try{const o=JSON.parse(localStorage.getItem(PK)||"null");if(o){$("pwn").value=String(o.pwn||0);$("pdc").checked=!!o.pdc;$("pdf").checked=!!o.pdf;$("pdo").checked=!!o.pdo}}catch(e){}
 ["pwn","pdc","pdf","pdo"].forEach(id=>$(id).addEventListener("change",()=>{try{localStorage.setItem(PK,JSON.stringify({pwn:wbN(),pdc:$("pdc").checked,pdf:$("pdf").checked,pdo:$("pdo").checked}))}catch(e){}}));
 // all chosen dockets share pages, 3 to an A4 sheet, so no paper is wasted
-function build(t){const all=[...Array.from({length:wbN()},()=>weighbridge(t)),...dCopies().map(l=>delivery(t,l))];let s="";
+function build(t){const n=t.wo?Math.max(1,wbN()):wbN();const all=[...Array.from({length:n},()=>weighbridge(t)),...(t.wo?[]:dCopies().map(l=>delivery(t,l)))];let s="";
  for(let i=0;i<all.length;i+=3)s+=`<div class="sheet">${all.slice(i,i+3).join("")}</div>`;return s}
 let cur=null;
 // the print page: choose copies at the top, see the dockets below, then Print
-function drawPrev(){if(!cur)return;const h=build(cur);$("prevbody").innerHTML=h||'<p class="mu" style="font:16px system-ui;padding:20px">Choose weighbridge docket copies or at least one delivery docket copy above.</p>';$("pprint").disabled=$("pdown").disabled=!h}
+function drawPrev(){if(!cur)return;const h=build(cur);$("prevbody").innerHTML=h||'<p class="mu" style="font:16px system-ui;padding:20px">Choose weighbridge docket copies or at least one delivery docket copy above.</p>';$("pprint").disabled=$("pdown").disabled=!h||cur.status==="open";if(cur.status==="open")$("pprint").title="Complete the ticket before printing"}
 function preview(t){cur=t;drawPrev();$("prev").style.display="block"}
 ["pwn","pdc","pdf","pdo"].forEach(id=>$(id).addEventListener("change",drawPrev));
 $("pclose").onclick=()=>{$("prev").style.display="none"};
@@ -419,8 +505,8 @@ function doPrint(t){if(!t||!anySel())return;$("print").innerHTML=build(t);window
 function mailErr(m){toast(m);try{localStorage.setItem(KEY+"-mailerr",m+" ("+new Date().toLocaleString("en-AU")+")")}catch(e){}const el=$("mailerr");if(el){el.textContent="Last email problem: "+m;el.hidden=false}}
 function docketName(t){const d=fmtDt(t.dt).slice(0,10).replace(/\//g,"-");return("Ticket "+t.no+(t.receiver?" - "+t.receiver:"")+(d?" - "+d:"")).replace(/[\\/:*?"<>|]+/g," ").replace(/\s+/g," ").trim()}
 async function sendDocketEmail(no){const t=S.tickets.find(x=>x.no===no);if(!t)return{ok:true};await withSigs(t);
- let b64="";try{const blob=await docketPdf(`<div class="sheet">${weighbridge(t)}${delivery(t,"Office copy")}</div>`);b64=await new Promise(r=>{const f=new FileReader();f.onload=()=>r(String(f.result).split(",")[1]);f.readAsDataURL(blob)})}catch(e){toast("Could not make the PDF for ticket "+no+"; the email was sent with the CSV only.")}
- const name=docketName(t);const r=await call("emailDocket",no,b64,name+".pdf",name);if(r&&r.sent){toast("Ticket "+no+" emailed to the office.");try{localStorage.removeItem(KEY+"-mailerr")}catch(e){}const el=$("mailerr");if(el)el.hidden=true}else if(r&&r.skipped)mailErr(r.skipped);return r}
+ let b64="";try{const blob=await docketPdf(`<div class="sheet">${weighbridge(t)}${t.wo?"":delivery(t,"Office copy")}</div>`);b64=await new Promise(r=>{const f=new FileReader();f.onload=()=>r(String(f.result).split(",")[1]);f.readAsDataURL(blob)})}catch(e){toast("Could not make the PDF for ticket "+no+"; the email was sent with the CSV only.")}
+ const name=docketName(t);const r=await call("emailDocket",no,b64,name+".pdf",name);if(r&&(r.sent||r.skipped)){t.emailed=r.emailed||"skipped";delete t._mailq;persist();render()}if(r&&r.sent){toast((r.update?"Updated ticket ":"Ticket ")+no+" emailed to the office.");try{localStorage.removeItem(KEY+"-mailerr")}catch(e){}const el=$("mailerr");if(el)el.hidden=true}else if(r&&r.skipped)mailErr(r.skipped);return r}
 // render each docket page to an image and wrap the pages in a PDF (A4)
 function pageImage(html){return new Promise((res,rej)=>{const W=794,H=1123,sc=1.6;
  const div=document.createElement("div");div.innerHTML=html;const xhtml=new XMLSerializer().serializeToString(div);
